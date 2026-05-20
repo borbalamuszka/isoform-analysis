@@ -73,7 +73,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
     protein_sequences = protein_sequences or {}
     domain_mapping = domain_mapping or {}
     app = Dash(__name__)
-    app.title = "Isoform Entropy Dashboard"
+    app.title = "Isoform Analysis Dashboard"
 
     # Build AlphaFold geometry mapping (transcript_nodots_gene_nodots -> file paths)
     af_geometry_mapping = build_alphafold_geometry_mapping(geometry_dir) if geometry_dir else {}
@@ -1237,12 +1237,62 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
     def update_protein_sequence(selected_transcript, selected_exon):
         """Update protein sequence display, highlighting the selected exon's residues."""
         if not selected_transcript or not protein_sequences:
-            return html.P("Select a transcript to view its protein sequence",
-                          style={"textAlign": "center", "color": "#999", "padding": "20px"})
+            return [
+                html.Div([
+                    html.Div([
+                        html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
+                        dcc.Clipboard(
+                            id="protein-sequence-clipboard",
+                            target_id="protein-sequence-text",
+                            style={"float": "right"},
+                            title="Copy protein sequence",
+                        ),
+                    ], style={"marginBottom": "6px"}),
+                    html.Pre(
+                        id="protein-sequence-text",
+                        style={
+                            "whiteSpace": "pre-wrap",
+                            "margin": 0,
+                            "fontFamily": "monospace",
+                            "fontSize": "12px",
+                            "wordBreak": "break-all",
+                            "backgroundColor": "#f9f9f9",
+                            "border": "none",
+                            "padding": 0,
+                        },
+                        children="Select a transcript to view its protein sequence"
+                    )
+                ])
+            ]
 
         if selected_transcript not in protein_sequences:
-            return html.P(f"No protein sequence available for {selected_transcript}",
-                          style={"textAlign": "center", "color": "#999", "padding": "20px"})
+            return [
+                html.Div([
+                    html.Div([
+                        html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
+                        dcc.Clipboard(
+                            id="protein-sequence-clipboard",
+                            target_id="protein-sequence-text",
+                            style={"float": "right"},
+                            title="Copy protein sequence",
+                        ),
+                    ], style={"marginBottom": "6px"}),
+                    html.Pre(
+                        id="protein-sequence-text",
+                        style={
+                            "whiteSpace": "pre-wrap",
+                            "margin": 0,
+                            "fontFamily": "monospace",
+                            "fontSize": "12px",
+                            "wordBreak": "break-all",
+                            "backgroundColor": "#f9f9f9",
+                            "border": "none",
+                            "padding": 0,
+                        },
+                        children=f"No protein sequence available for {selected_transcript}"
+                    )
+                ])
+            ]
 
         sequence = protein_sequences[selected_transcript]
 
@@ -1254,7 +1304,6 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
                 selected_exon.get("transcript_id") == selected_transcript):
             exon_idx = selected_exon.get("exon_idx")
             if exon_idx is not None:
-                # Use the pre-built flat lookup (O(1) instead of O(genes) scan)
                 exons_sorted = _transcript_to_exons.get(selected_transcript)
                 if exons_sorted is not None and exon_idx < len(exons_sorted):
                     res_range = compute_exon_residue_range(exon_idx, exons_sorted)
@@ -1288,6 +1337,38 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
                 style={"marginBottom": "4px", "letterSpacing": "0.5px",
                        "lineHeight": "1.6"},
             ))
+
+        # Join all rows for display and for copying
+        display_seq = "\n".join(["".join([span.props['children'] if hasattr(span, 'props') else span.children for span in row.children]) if hasattr(row, 'children') else "" for row in rows])
+        copy_seq = sequence
+
+        return [
+            html.Div([
+                html.Div([
+                    html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
+                    dcc.Clipboard(
+                        id="protein-sequence-clipboard",
+                        target_id="protein-sequence-text",
+                        style={"float": "right"},
+                        title="Copy protein sequence",
+                    ),
+                ], style={"marginBottom": "6px"}),
+                html.Pre(
+                    id="protein-sequence-text",
+                    style={
+                        "whiteSpace": "pre-wrap",
+                        "margin": 0,
+                        "fontFamily": "monospace",
+                        "fontSize": "12px",
+                        "wordBreak": "break-all",
+                        "backgroundColor": "#f9f9f9",
+                        "border": "none",
+                        "padding": 0,
+                    },
+                    children=copy_seq
+                )
+            ])
+        ]
 
         # --- Header line ---
         if hi_start is not None:

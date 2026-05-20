@@ -192,6 +192,29 @@ python3 -m interpro.interpro_scan \
   --output data/project/output/interpro_results/TRANSCRIPT_ID.json
 ```
 
+### AlphaFold geometry conversion: `utilities/extract_3d_geometry.py`
+
+Convert AlphaFold Server job outputs into per‑residue geometry summaries and
+HTML viewers (including optional per‑exon highlight viewers).
+
+- **Inputs**
+  - `--alphafold-dir`: AlphaFold Server output folder containing job subfolders.
+  - `--output-dir`: target folder for geometry outputs.
+  - `--model-index`: which ranked model to use (default: 0).
+  - `--all-models`: process model indices 0–4 for every job (optional).
+  - `--gtf`: GTF file to generate per‑exon highlighted HTML viewers (optional).
+- **Outputs**
+  - `viewer_modelN.html` interactive HTML viewer per job.
+  - `viewer_modelN_exonX.html` (when `--gtf` is provided).
+
+**Example (batch mode, per‑exon viewers):**
+```bash
+python -m utilities.extract_3d_geometry \
+  --alphafold-dir data/project/alphafold_jobs \
+  --output-dir data/project/output/alphafold_geometry \
+  --gtf data/project/expressed_isoforms.gtf
+```
+
 ## Bootstrapping overview
 
 **Script:** `isoform_distribution/bootstrap_isoform_means.py`
