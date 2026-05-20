@@ -1,60 +1,63 @@
-# Quick start: run the dashboard locally
+# Isoform Analysis Tools & Interactive Dashboard
+
+- Analyze gene isoform expression and generate distribution tables/plots.
+- Compute per‑gene metrics (entropy, Spearman) and bootstrap isoform means with CIs.
+- Query protein domains via InterPro Scan.
+- Create AlphaFold 3D geometry visualisations.
+- Explore results in an interactive Dash dashboard with exon, domain, and protein structure visualization.
+- Works with generic datasets; grouping and labels depend on the input data provided.
+
+## Quick start: run the dashboard locally
 
 1. **Clone and enter the repo**
-  ```bash
-  git clone https://github.com/borbala19/isoform-analysis.git
-  cd isoform-analysis
-  ```
+    ```bash
+    git clone https://github.com/borbalamuszka/isoform-analysis.git
+    cd isoform-analysis
+    ```
 
 2. **Create and activate a virtual environment (recommended)**
 
-   - macOS / Linux (bash or zsh):
-     ```bash
-     python3 -m venv isoform_dashboard_env
-     source isoform_dashboard_env/bin/activate
-     ```
+  - macOS / Linux (bash or zsh):
+    ```bash
+    python3 -m venv isoform_dashboard_env
+    source isoform_dashboard_env/bin/activate
+    ```
 
-   - Windows (PowerShell or cmd):
-     ```powershell
-     python -m venv isoform_dashboard_env
-     isoform_dashboard_env\Scripts\activate
-     ```
+  - Windows (PowerShell or cmd):
+    ```powershell
+    python -m venv isoform_dashboard_env
+    isoform_dashboard_env\Scripts\activate
+    ```
 
 3. **Install dependencies** (from the repo root)
-  ```bash
-  pip install -r requirements.txt
-  ```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 4. **Run the dashboard** (from the repo root)
 
-   Minimal (use all built‑in defaults for inputs/paths):
-
-   ```bash
-   python -m isoform_dashboard.dashboard_app
-   ```
-
-   Explicit (override inputs or use custom files):
-
    ```bash
    python -m isoform_dashboard.dashboard_app \
-     --input-mean   data/neuro_project/output/isoform_distributions/distributions_condition_mean.tsv \
-     --input-sum    data/neuro_project/output/isoform_distributions/distributions_condition_sum.tsv \
-     --ci-file      data/neuro_project/output/isoform_distributions/confidence_intervals.tsv \
-     --exons        data/neuro_project/expressed_isoforms.gtf \
-     --proteins     data/neuro_project/proteins.fasta \
-     --geometry-dir data/neuro_project/output/alphafold_geometry
+     --input-mean   data/project/output/isoform_distributions/distributions_mean.tsv \
+     --input-sum    data/project/output/isoform_distributions/distributions_sum.tsv \
+     --ci-file      data/project/output/isoform_distributions/confidence_intervals.tsv \
+     --exons        data/project/expressed_isoforms.gtf \
+     --proteins     data/project/proteins.fasta \
+     --geometry-dir data/project/output/alphafold_geometry \
+     --interpro-dir data/project/output/interpro_results
    ```
 
    Windows PowerShell (line continuation with backticks):
 
    ```powershell
    python -m isoform_dashboard.dashboard_app `
-     --input-mean   data/neuro_project/output/isoform_distributions/distributions_condition_mean.tsv `
-     --input-sum    data/neuro_project/output/isoform_distributions/distributions_condition_sum.tsv `
-     --ci-file      data/neuro_project/output/isoform_distributions/confidence_intervals.tsv `
-     --exons        data/neuro_project/expressed_isoforms.gtf `
-     --proteins     data/neuro_project/proteins.fasta `
-     --geometry-dir data/neuro_project/output/alphafold_geometry
+     --input-mean   data/project/output/isoform_distributions/distributions_mean.tsv `
+     --input-sum    data/project/output/isoform_distributions/distributions_sum.tsv `
+     --ci-file      data/project/output/isoform_distributions/confidence_intervals.tsv `
+     --exons        data/project/expressed_isoforms.gtf `
+     --proteins     data/project/proteins.fasta `
+     --geometry-dir data/project/output/alphafold_geometry `
+     --interpro-dir data/project/output/interpro_results
    ```
 
    For Windows cmd.exe, replace the backticks with carets (`^`) or paste the command on one line.
@@ -71,45 +74,107 @@
 > **Alternatives to cloning the repo?**
 > The simplest supported workflow is cloning this GitHub repo. You could instead download a ZIP from GitHub ("Code → Download ZIP") and unpack it, but you still need the same Python environment, data files, and commands as above.
 
-# Gene Isoform Expression Analysis
+<!-- ## Dashboard preview
 
-Tools for analysing gene isoform expression across brain regions and conditions, generating isoform distribution tables/plots, computing per‑gene metrics (entropy, Spearman, TVD), bootstrapping isoform means with CIs, querying protein domains via InterPro Scan, and exploring everything in an interactive Dash dashboard.
+![Isoform Entropy Dashboard](assets/isoform-entropy-dashboard.jpg) -->
+
+## Input data
+
+- **Expression data file**
+  - E.g. `expressed_isoforms_matrix.tsv` / `.txt`
+  - Rows: `transcript_id`.
+  - Columns: sample names (e.g. `Sample_A`, `Group1_Sample3`).
+  - Used by distribution scripts and dashboard.
+
+- **Positions / GTF file**
+  - E.g. `expressed_isoforms.gtf`
+  - Genomic positions and metadata (chrom, exon_start/end, cds_start/end, gene_id, transcript_id, …).
+  - Used by distribution scripts and dashboard.
+
+- **Optional confidence intervals file**
+  - E.g. `confidence_intervals.tsv`
+  - Bootstrap mean and CI bounds per isoform, plus optional group‑specific CIs (based on your input data).
+  - Used by the dashboard to overlay error bars.
 
 ## Main components
 
-### Isoform distributions & correlations
+### Isoform distributions: `isoform_distribution/distributions.py`
 
-**Distributions:** `isoform_distribution/distributions.py`
-
-Generates per‑gene isoform distribution tables and multi‑page PDF plots.
+Generates isoform distribution tables (one row per retained transcript).
 
 - **Features**
   - Filters low‑contribution isoforms by percentage cutoff.
-  - Aggregation modes:
+  - Aggregation statistics:
     - `sum`: summed expression across samples.
     - `mean`: mean expression across samples.
     - `normalized`: per‑gene per‑sample normalization (isoforms sum to 1); global value = mean normalized contribution.
-  - Individual‑sample and aggregated views (by brain region or condition).
-  - Optional CI markers on global bars when a CI file is provided.
+  - Metadata grouping (default): use a metadata file to map samples to groups.
 - **Inputs**
-  - `expressed_isoforms_matrix.txt/tsv`: isoform expression matrix (rows = transcript_id, columns = samples).
-  - Positions / GTF file for transcript → gene mapping.
-  - Optional `confidence_intervals.tsv`.
+  - `--matrix`: isoform expression matrix (rows = transcript_id, columns = samples).
+  - `--gtf`: GTF file for transcript → gene mapping.
+  - `--output-dir`: output directory for distribution tables.
+  - `--cutoff-pct`: minimum percent contribution to retain an isoform (default: 1.5).
+  - `--stat`: aggregation mode (`sum`, `mean`, or `normalized`).
+  - `--exclude-sample-substr`: exclude samples containing this substring.
+  - `--meta-file`: metadata file mapping samples to groups (required for aggregated tables).
+  - `--meta-sample-col`: metadata column with sample identifiers.
+  - `--meta-group-col`: metadata column to group by.
+  - `--sample-col-prefix`: prefix to strip from matrix sample column names.
+  - `--sample-id-sep`: separator used to split metadata sample IDs.
+  - `--normalize-groups`: optional group normalization.
 - **Outputs**
   - TSV tables of retained isoforms per gene / aggregation.
-  - PDF plots of isoform distributions.
 
-**Correlations:** `isoform_distribution/correlation.py`
+**Example:**
 
-Computes per‑gene metrics (entropy, Spearman, TVD) and interactive scatter plots.
+```bash
+python -m isoform_distribution.distributions \
+  --matrix data/project/expressed_isoforms_matrix.tsv \
+  --gtf data/project/expressed_isoforms.gtf \
+  --meta-file data/project/meta_data.tsv \
+  --output-dir data/project/output/isoform_distributions \
+  --meta-sample-col sample_id \
+  --meta-group-col cell_type  \
+  --sample-col-prefix ENCFF \
+  --sample-id-sep _ \
+  --normalize-groups heart_brain \
+  --stat sum \
+  --cutoff-pct 1.5
+```
 
-- **Metrics**
-  - Top and summed isoform entropy.
-  - Pairwise Spearman correlations.
-  - Pairwise TVD on per‑gene, per‑sample normalized isoform profiles.
+### Dashboard: `isoform_dashboard/dashboard_app.py`
+- **Features**
+  - Sortable gene rankings table with statistics with filters.
+  - Interactive scatter plot: summed vs top isoform entropy, colored by min Spearman.
+  - Isoform distribution panel: per‑sample/group bar charts; optional bootstrap CIs (`--ci-file`); switch between **mean** and **sum** tables.
+  - Exon structure: color‑coded exons (orange CDS, blue UTR) from GTF; clickable InterPro domains.
+  - Support for AlphaFold 3D geometry visualization.
+  - Exon-level highlighting in the 3D viewer and protein sequence display.
+- **Inputs**
+  - `--input-mean`: TSV with mean values.
+  - `--input-sum`: TSV with sum values (optional).
+  - `--ci-file`: bootstrap CI TSV (optional).
+  - `--exons`: GTF file with exon/CDS annotations (optional).
+  - `--proteins`: protein FASTA file (optional).
+  - `--geometry-dir`: AlphaFold geometry output directory (optional).
+  - `--interpro-dir`: InterPro results directory (optional).
 - **Outputs**
-  - `<input>_gene_correlations.tsv` with metrics.
-  - HTML scatter plots (summed vs top entropy, min Spearman, max TVD, etc.).
+  - Live app at `http://127.0.0.1:8050` (default).
+
+**Example:**
+
+```bash
+python -m isoform_dashboard.dashboard_app \
+  --input-mean data/project/output/isoform_distributions/distributions_mean.tsv \
+  --input-sum  data/project/output/isoform_distributions/distributions_sum.tsv \
+  --ci-file    data/project/output/isoform_distributions/confidence_intervals.tsv \
+  --exons      data/project/expressed_isoforms.gtf \
+  --proteins   data/project/proteins.fasta \
+  --geometry-dir data/project/output/alphafold_geometry \
+  --interpro-dir data/project/output/interpro_results
+```
+
+Then open `http://127.0.0.1:8050` in your browser.
 
 ### InterPro domains: `interpro/interpro_scan.py`
 
@@ -117,143 +182,36 @@ Submits protein sequences to the EBI InterPro Scan REST API.
 
 - Reads peptide sequences from FASTA.
 - Submits a transcript’s protein sequence, polls until done, saves JSON/TSV.
-- Default output under `data/neuro_project/output/interpro_results/`.
 
-### Dash dashboard: `isoform_dashboard/`
-
-Interactive web app for exploring isoform expression, entropy, correlations, and exon structure.
-
-- **Entry point:** `isoform_dashboard/dashboard_app.py`
-- **Features**
-  - Dataset toggle: switch between **mean** and **sum** tables.
-  - Interactive scatter plot: summed vs top isoform entropy, colored by min Spearman.
-  - Isoform distribution panel: per‑sample/group bar charts; optional bootstrap CIs (`--ci-file`).
-  - Exon structure: color‑coded exons (orange CDS, blue UTR) from GTF.
-  - Sortable gene rankings table with statistics and export functionality.
-  - Support for AlphaFold geometry visualization.
-- **Inputs**
-  - `--input-mean`: TSV with mean values.
-  - `--input-sum`: TSV with sum values (optional).
-  - `--ci-file`: bootstrap CI TSV (optional).
-  - `--exons`: GTF file with exon/CDS annotations (optional).
-- **Outputs**
-  - Live app at `http://127.0.0.1:8050` (default).
-  - `highlighted_genes_YYYYMMDD_HHMMSS.txt` on export.
-
-
-## Input data
-
-- **`expressed_isoforms_matrix.tsv` / `.txt`**
-  - Rows: `transcript_id`.
-  - Columns: sample names (e.g. `Region_Condition_Age_Subject`).
-  - Used by distribution scripts, correlation, and dashboard.
-  - Need not be pre‑normalized; TVD is computed on normalized profiles internally.
-
-- **Positions / GTF file**
-  - Genomic positions and metadata (chrom, exon_start/end, cds_start/end, gene_id, transcript_id, …).
-  - Used to map transcripts to genes and to build exon diagrams.
-
-- **Optional `confidence_intervals.tsv`**
-  - Bootstrap mean and CI bounds per isoform, plus region/condition‑specific CIs.
-  - Used by `distributions.py` / `plots.py` and the dashboard to overlay error bars.
-
-## Typical usage
-
-### Isoform distributions
-
-```bash
-python3 -m isoform_distribution.distributions \
-  --table-type aggregated \
-  --stat sum \
-  --cutoff-pct 1.5
-```
-
-### InterPro Scan
+**Example:**
 
 ```bash
 python3 -m interpro.interpro_scan \
-  G10110.21.nnc \
-  --fasta data/neuro_project/expressed_isoforms_PEP.fasta \
-  --output data/neuro_project/output/interpro_results/G10110.21.nnc.json
+  TRANSCRIPT_ID \
+  --fasta data/project/expressed_isoforms_PEP.fasta \
+  --output data/project/output/interpro_results/TRANSCRIPT_ID.json
 ```
-
-Windows PowerShell:
-
-```powershell
-python -m interpro.interpro_scan `
-  G10110.21.nnc `
-  --fasta data/neuro_project/expressed_isoforms_PEP.fasta `
-  --output data/neuro_project/output/interpro_results/G10110.21.nnc.json
-```
-
-For Windows cmd.exe, replace the backticks with carets (`^`) or paste the command on one line.
-
-### Dashboard
-
-Minimal (use all built‑in defaults for inputs/paths):
-
-```bash
-python -m isoform_dashboard.dashboard_app
-```
-
-Explicit (override inputs or use custom files):
-
-```bash
-python -m isoform_dashboard.dashboard_app \
-  --input-mean data/neuro_project/output/isoform_distributions/distributions_condition_mean.tsv \
-  --input-sum  data/neuro_project/output/isoform_distributions/distributions_condition_sum.tsv \
-  --ci-file    data/neuro_project/output/isoform_distributions/confidence_intervals.tsv \
-  --exons      data/neuro_project/expressed_isoforms.gtf
-```
-
-Windows PowerShell:
-
-```powershell
-python -m isoform_dashboard.dashboard_app `
-  --input-mean data/neuro_project/output/isoform_distributions/distributions_condition_mean.tsv `
-  --input-sum  data/neuro_project/output/isoform_distributions/distributions_condition_sum.tsv `
-  --ci-file    data/neuro_project/output/isoform_distributions/confidence_intervals.tsv `
-  --exons      data/neuro_project/expressed_isoforms.gtf
-```
-
-For Windows cmd.exe, replace the backticks with carets (`^`) or paste the command on one line.
-
-Then open `http://127.0.0.1:8050` in your browser.
 
 ## Bootstrapping overview
 
 **Script:** `isoform_distribution/bootstrap_isoform_means.py`
 
-- Start from the isoform expression matrix (adult samples only; fetal excluded via `--include-key adult`).
+- Start from the isoform expression matrix.
 - For each bootstrap iteration:
   - Resample columns (samples) with replacement.
   - Compute mean expression per isoform.
 - For each isoform:
   - Sort its bootstrap means.
   - Drop the lowest and highest 2.5% (for N=1000, drop 25 values at each tail) → 95% CI.
-- Generates global CIs plus region-specific and condition-specific CIs.
+- Generates global CIs plus optional group-specific CIs (if grouping metadata is provided).
 - CIs are used as error bars on isoform distribution plots (mean dataset).
 
 **Usage:**
 
 ```bash
 python3 -m isoform_distribution.bootstrap_isoform_means \
-  --input data/neuro_project/expressed_isoforms_matrix.tsv \
-  --output-dir data/neuro_project/output/isoform_distributions \
+  --input data/project/expressed_isoforms_matrix.tsv \
+  --output-dir data/project/output/isoform_distributions \
   --iterations 1000 \
-  --seed 42 \
-  --include-key adult
+  --seed 42
 ```
-
-Windows PowerShell:
-
-```powershell
-python -m isoform_distribution.bootstrap_isoform_means `
-  --input data/neuro_project/expressed_isoforms_matrix.tsv `
-  --output-dir data/neuro_project/output/isoform_distributions `
-  --iterations 1000 `
-  --seed 42 `
-  --include-key adult
-```
-
-For Windows cmd.exe, replace the backticks with carets (`^`) or paste the command on one line.
