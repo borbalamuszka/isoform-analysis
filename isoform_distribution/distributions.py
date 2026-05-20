@@ -1,0 +1,316 @@
+"""
+Isoform distribution table generation script.
+Generates TSV tables of isoform expression data.
+For plotting, use plots.py instead.
+"""
+
+import pandas as pd
+import utilities.gene_expression_analysis as gene_expression_analysis
+import argparse
+from pathlib import Path
+from collections import defaultdict
+from .utils import (
+    aggregate_samples_by_group,
+    get_filtered_isoforms,
+    prepare_gene_list_and_paths,
+    _normalize_gene_samples
+)
+
+# Define base directory relative to this script
+BASE_DIR = Path(__file__).parent.parent  # source/
+
+
+def write_isoform_table(df_isoform_matrix, sample_cols, all_genes, output_dir, suffix, 
+                       cutoff_pct=2, stat='sum'):
+    """
+    Write a single TSV with one row per retained transcript across all genes.
+    
+    Args:
+        df_isoform_matrix: DataFrame with isoform expression data
+        sample_cols: List of sample column names
+        all_genes: List of gene IDs to include
+        output_dir: Output directory path
+        suffix: Suffix for the output filename (e.g., 'individual', 'region', 'condition')
+        cutoff_pct: Minimum percentage contribution to keep an isoform
+        stat: 'sum', 'mean', or 'normalized'
+        
+    Output columns:
+        gene_id, transcript_id, global_sum or global_mean, 
+        <sample/group columns...>
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for gene_id in all_genes:
+        gene_transcripts = df_isoform_matrix[df_isoform_matrix['gene_id'] == gene_id].drop(columns=['gene_id'])
+
+        # Compute normalized matrix once per gene when needed
+        norm = None
+        if stat == 'normalized':
+            norm = _normalize_gene_samples(gene_transcripts, sample_cols)
+
+        filtered_isoforms = get_filtered_isoforms(gene_transcripts, sample_cols, cutoff_pct, stat)
+        if filtered_isoforms is None:
+            continue
+
+        if stat == 'mean':
+            global_expr = gene_transcripts[sample_cols].mean(axis=1).loc[filtered_isoforms]
+        elif stat == 'normalized':
+            global_expr = norm.mean(axis=1).loc[filtered_isoforms]
+        else:
+            global_expr = gene_transcripts[sample_cols].sum(axis=1).loc[filtered_isoforms]
+
+        sorted_isoforms = [isoform for _, isoform in sorted(zip(global_expr, filtered_isoforms), reverse=True)]
+        global_expr_sorted = global_expr.loc[sorted_isoforms]
+
+        for isoform in sorted_isoforms:
+            row = {
+                'gene_id': gene_id,
+                'transcript_id': isoform,
+                ('global_mean' if stat in ['mean', 'normalized'] else 'global_sum'): float(global_expr_sorted.loc[isoform]),
+            }
+            if stat == 'normalized':
+                for sc in sample_cols:
+                    row[sc] = float(norm.at[isoform, sc])
+            else:
+                for sc in sample_cols:
+                    row[sc] = float(gene_transcripts.at[isoform, sc])
+            rows.append(row)
+
+    output_df = pd.DataFrame(rows)
+    out_path = output_dir / f"distributions_{suffix}_{stat}.tsv"
+    output_df.to_csv(out_path, sep='\t', index=False)
+    print(f"Wrote {out_path}")
+
+
+def generate_individual_tables(df_isoform_matrix, sample_cols, out_dir, cutoff_pct=2, stat='sum'):
+    """
+    Generate tables for individual samples.
+    
+    Args:
+        df_isoform_matrix: DataFrame with isoform expression data
+        sample_cols: List of sample column names
+        out_dir: Output directory path
+        cutoff_pct: Minimum percentage contribution to keep an isoform
+        stat: 'sum', 'mean', or 'normalized'
+    """
+    out_dir, all_genes = prepare_gene_list_and_paths(df_isoform_matrix, out_dir)
+    write_isoform_table(df_isoform_matrix, sample_cols, all_genes, out_dir, "individual", 
+                       cutoff_pct=cutoff_pct, stat=stat)
+
+
+def generate_aggregated_tables(df_isoform_matrix, sample_cols, out_dir, cutoff_pct=2, stat='sum'):
+    """
+    Generate aggregated tables by brain region and condition.
+    
+    Args:
+        df_isoform_matrix: DataFrame with isoform expression data
+        sample_cols: List of sample column names
+        out_dir: Output directory path
+        cutoff_pct: Minimum percentage contribution to keep an isoform
+        stat: 'sum', 'mean', or 'normalized'
+    """
+    out_dir, all_genes = prepare_gene_list_and_paths(df_isoform_matrix, out_dir)
+    
+    for group_by in ['region', 'condition']:
+        print(f"Generating {group_by} table with stat={stat}...")
+        df_aggregated = aggregate_samples_by_group(df_isoform_matrix, sample_cols,
+                                                   group_by=group_by, stat=stat)
+        agg_cols = [col for col in df_aggregated.columns if col != 'gene_id']
+        write_isoform_table(df_aggregated, agg_cols, all_genes, out_dir, group_by,
+                            cutoff_pct=cutoff_pct, stat=stat)
+
+
+def _load_metadata(meta_path, sample_col, group_col):
+    meta_df = pd.read_csv(meta_path, sep=r'\s+', quotechar='"', engine='python', dtype=str)
+    meta_df.columns = [c.strip().strip('"') for c in meta_df.columns]
+    normalized = {c.lower(): c for c in meta_df.columns}
+    required = [sample_col.lower(), group_col.lower()]
+    if not all(col in normalized for col in required):
+        raise ValueError(
+            f"Metadata file missing required columns: {required}. Found: {meta_df.columns.tolist()}"
+        )
+    meta_df = meta_df.rename(columns={
+        normalized[sample_col.lower()]: 'sample_id',
+        normalized[group_col.lower()]: 'group'
+    })
+    for col in ['sample_id', 'group']:
+        meta_df[col] = meta_df[col].astype(str).str.strip().str.strip('"')
+    return meta_df
+
+
+def _normalize_group_labels(group_series, normalize_mode):
+    if normalize_mode == 'heart_brain':
+        return group_series.str.lower().map(
+            lambda ct: 'heart' if ct.startswith('heart') else ('brain' if ct.startswith('brain') else ct)
+        )
+    return group_series
+
+
+def _build_groups_from_metadata(meta_df, sample_cols, sample_col_prefix='ENCFF',
+                                sample_id_sep='_', normalize_mode=None):
+    cleaned = meta_df[['sample_id', 'group']].dropna().copy()
+    cleaned['group'] = _normalize_group_labels(cleaned['group'], normalize_mode)
+
+    sample_prefix_map = (
+        cleaned.assign(sample_prefix=lambda df: df['sample_id'].str.split(sample_id_sep).str[0])
+        .set_index('sample_prefix')['group']
+        .to_dict()
+    )
+
+    grouped = defaultdict(list)
+    for sample_col in sample_cols:
+        prefix = sample_col
+        if sample_col_prefix:
+            prefix = sample_col.replace(sample_col_prefix, '')
+        group = sample_prefix_map.get(prefix)
+        if group:
+            grouped[group].append(sample_col)
+    return grouped
+
+
+def _aggregate_samples_by_mapping(df_isoform_matrix, grouped_cols, stat='sum'):
+    result_data = {}
+    for group_key, group_sample_cols in grouped_cols.items():
+        if stat == 'mean':
+            result_data[group_key] = df_isoform_matrix[group_sample_cols].mean(axis=1)
+        elif stat == 'normalized':
+            vals = []
+            for _, gene_block in df_isoform_matrix.groupby('gene_id'):
+                gb = gene_block.drop(columns=['gene_id'])
+                norm = _normalize_gene_samples(gb, group_sample_cols).mean(axis=1)
+                vals.append(norm)
+            result_data[group_key] = pd.concat(vals).reindex(df_isoform_matrix.index)
+        else:
+            result_data[group_key] = df_isoform_matrix[group_sample_cols].sum(axis=1)
+
+    result_df = pd.DataFrame(result_data)
+    result_df['gene_id'] = df_isoform_matrix['gene_id']
+    return result_df
+
+
+def generate_metadata_group_tables(df_isoform_matrix, sample_cols, out_dir, meta_path,
+                                   meta_sample_col='sample_id', meta_group_col='cell_type',
+                                   sample_col_prefix='ENCFF', sample_id_sep='_',
+                                   normalize_mode=None, group_label='condition',
+                                   cutoff_pct=2, stat='sum'):
+    """
+    Generate aggregated tables using metadata-provided grouping.
+
+    Args:
+        df_isoform_matrix: DataFrame with isoform expression data
+        sample_cols: List of sample column names
+        out_dir: Output directory path
+        meta_path: Path to metadata file
+        meta_sample_col: Column in metadata that identifies samples
+        meta_group_col: Column in metadata to group by
+        sample_col_prefix: Prefix to strip from sample column names
+        sample_id_sep: Separator to split sample IDs for prefix matching
+        normalize_mode: Optional group normalization mode (e.g., 'heart_brain')
+        group_label: Label used in output filename
+        cutoff_pct: Minimum percentage contribution to keep an isoform
+        stat: 'sum', 'mean', or 'normalized'
+    """
+    out_dir, all_genes = prepare_gene_list_and_paths(df_isoform_matrix, out_dir)
+    meta_df = _load_metadata(meta_path, meta_sample_col, meta_group_col)
+    grouped_cols = _build_groups_from_metadata(
+        meta_df,
+        sample_cols,
+        sample_col_prefix=sample_col_prefix,
+        sample_id_sep=sample_id_sep,
+        normalize_mode=normalize_mode
+    )
+    if not grouped_cols:
+        raise ValueError("No condition groups found from metadata; check sample IDs and column names.")
+
+    print(f"Generating {group_label} table with stat={stat}...")
+    df_aggregated = _aggregate_samples_by_mapping(df_isoform_matrix, grouped_cols, stat=stat)
+    agg_cols = [col for col in df_aggregated.columns if col != 'gene_id']
+    write_isoform_table(df_aggregated, agg_cols, all_genes, out_dir, group_label,
+                        cutoff_pct=cutoff_pct, stat=stat)
+
+
+def main():
+    """Main entry point for table generation script."""
+    parser = argparse.ArgumentParser(
+        description='Generate isoform distribution tables (TSV format only). '
+                   'For plotting, use plots.py instead.'
+    )
+    parser.add_argument('--cutoff-pct', type=float, default=1.5, help='Percentage cutoff for filtering isoforms')
+    parser.add_argument('--table-type', type=str, choices=['individual', 'aggregated', 'both'], default='aggregated', help='Type of tables to generate')
+    parser.add_argument('--stat', choices=['sum', 'mean', 'normalized'], default='sum', help='Use sum, mean, or normalized for distributions')
+    parser.add_argument('--matrix', type=str, required=True, help='Path to isoform expression matrix')
+    parser.add_argument('--gtf', type=str, required=True, help='Path to GTF file for transcript->gene mapping')
+    parser.add_argument('--meta-file', type=str, default=None, help='Path to metadata file for grouping')
+    parser.add_argument('--output-dir', type=str, required=True, help='Output directory for distributions')
+    parser.add_argument('--group-by', type=str, choices=['region', 'condition', 'metadata'], default='metadata',
+                        help='Grouping mode for aggregated tables')
+    parser.add_argument('--meta-sample-col', type=str, default='sample_id',
+                        help='Metadata column that identifies samples')
+    parser.add_argument('--meta-group-col', type=str, default='cell_type',
+                        help='Metadata column to group by')
+    parser.add_argument('--sample-col-prefix', type=str, default='ENCFF',
+                        help='Prefix to strip from matrix sample column names')
+    parser.add_argument('--sample-id-sep', type=str, default='_',
+                        help='Separator used to split metadata sample IDs')
+    parser.add_argument('--normalize-groups', type=str, choices=['none', 'heart_brain'], default='none',
+                        help='Optional group normalization (e.g., collapse heart_* to heart)')
+    parser.add_argument('--exclude-sample-substr', action='append', default=[],
+                        help='Exclude samples containing this substring (can be repeated)')
+    args = parser.parse_args()
+
+    file_path_isoform_matrix = Path(args.matrix)
+    file_path_isoform_gtf = Path(args.gtf)
+    meta_path = Path(args.meta_file) if args.meta_file else None
+    distributions_out_dir = Path(args.output_dir)
+
+    df_isoform_matrix = pd.read_csv(file_path_isoform_matrix, delimiter='\t', index_col=0)
+    transcript_id_to_gene = gene_expression_analysis.load_gtf_mapping(file_path_isoform_gtf)
+    df_isoform_matrix = gene_expression_analysis.map_transcripts_to_genes(df_isoform_matrix, transcript_id_to_gene)
+
+    all_sample_cols = df_isoform_matrix.columns.difference(['gene_id']).tolist()
+    df_isoform_matrix[all_sample_cols] = (
+        df_isoform_matrix[all_sample_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+    )
+
+    sample_cols = all_sample_cols
+    if args.exclude_sample_substr:
+        exclude_tokens = [tok.lower() for tok in args.exclude_sample_substr]
+        sample_cols = [
+            c for c in all_sample_cols
+            if not any(tok in c.lower() for tok in exclude_tokens)
+        ]
+        df_isoform_matrix = df_isoform_matrix[['gene_id'] + sample_cols]
+
+    if args.table_type in ['individual', 'both']:
+        generate_individual_tables(df_isoform_matrix, sample_cols, distributions_out_dir,
+                                   cutoff_pct=args.cutoff_pct, stat=args.stat)
+
+    if args.table_type in ['aggregated', 'both']:
+        if args.group_by == 'metadata':
+            if not meta_path:
+                raise ValueError("Metadata grouping requested but no --meta-file provided.")
+            normalize_mode = None if args.normalize_groups == 'none' else args.normalize_groups
+            generate_metadata_group_tables(
+                df_isoform_matrix,
+                sample_cols,
+                distributions_out_dir,
+                meta_path=meta_path,
+                meta_sample_col=args.meta_sample_col,
+                meta_group_col=args.meta_group_col,
+                sample_col_prefix=args.sample_col_prefix,
+                sample_id_sep=args.sample_id_sep,
+                normalize_mode=normalize_mode,
+                group_label='condition',
+                cutoff_pct=args.cutoff_pct,
+                stat=args.stat
+            )
+        else:
+            generate_aggregated_tables(df_isoform_matrix, sample_cols, distributions_out_dir,
+                                       cutoff_pct=args.cutoff_pct, stat=args.stat)
+
+
+if __name__ == "__main__":
+    main()
+
