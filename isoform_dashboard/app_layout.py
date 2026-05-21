@@ -18,6 +18,7 @@ from .data_processing import (
     compute_min_spearman_per_gene,
     compute_gene_ranking,
     compute_gene_ranking_by_expression,
+    gene_has_cds,
 )
 from .alphafold_geometry import (
     build_alphafold_geometry_mapping,
@@ -223,7 +224,18 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                 
                 # 3. Scatter Plot (third)
                 html.Div([
-                    html.H4("Summed vs Top Isoform Entropy (colored by min Spearman)", style=global_style),
+                    html.H4(
+                        "Summed vs Top Isoform Entropy (colored by min Spearman)",
+                        style={**global_style, "marginBottom": "6px", "marginTop": "0px"}
+                    ),
+                    html.Div([
+                        dcc.Checklist(
+                            id='negative-spearman-toggle',
+                            options=[{'label': ' Show only negative Spearman', 'value': 'negative_only'}],
+                            value=[],
+                            style={'display': 'inline-block', 'marginRight': '20px'}
+                        ),
+                    ], style={"marginBottom": "2px", "marginTop": "2px"}),
                     dcc.Graph(id="plot-entropy-scatter"),
                 ], style={"width": "100%"}),
             ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top", "paddingRight": "20px"}),
@@ -282,14 +294,14 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     ),
                     dcc.Checklist(
                         id='3d-filter-toggle',
-                        options=[{'label': ' Genes with 3D structure', 'value': 'filter_3d'}],
-                        value=['filter_3d'],
+                        options=[{'label': ' Only genes with 3D structure', 'value': 'filter_3d'}],
+                        value=[],
                         style={'display': 'inline-block', 'marginRight': '20px'}
                     ),
                     dcc.Checklist(
                         id='domain-filter-toggle',
-                        options=[{'label': ' Genes with domains', 'value': 'filter_domains'}],
-                        value=['filter_domains'],
+                        options=[{'label': ' Only genes with domains', 'value': 'filter_domains'}],
+                        value=[],
                         style={'display': 'inline-block'}
                     )
                 ], style={"marginBottom": "15px"}),
@@ -418,6 +430,42 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
     domain_mapping = domain_mapping or {}
     gene_names = gene_names or {}
 
+    _genes_with_cds = set()
+    if isoforms_by_gene:
+        _genes_with_cds = {gene_id for gene_id in isoforms_by_gene.keys()
+                           if gene_has_cds(gene_id, isoforms_by_gene)}
+
+    _genes_with_3d = set()
+    if isoforms_by_gene and af_geometry_mapping:
+        for gene_id, transcripts in isoforms_by_gene.items():
+            for transcript_id in transcripts.keys():
+                key = transcript_id.replace(".", "").lower()
+                if key in af_geometry_mapping:
+                    _genes_with_3d.add(gene_id)
+                    break
+
+    _genes_with_domains = set()
+    if isoforms_by_gene and domain_mapping:
+        for gene_id, transcripts in isoforms_by_gene.items():
+            for transcript_id in transcripts.keys():
+                if domain_mapping.get(transcript_id):
+                    _genes_with_domains.add(gene_id)
+                    break
+
+    def _axis_ranges_for_results(results_df: pd.DataFrame):
+        if results_df is None or results_df.empty:
+            return None, None
+        x_min = results_df["summed_isoform_entropy"].min()
+        x_max = results_df["summed_isoform_entropy"].max()
+        y_min = results_df["top_isoform_entropy"].min()
+        y_max = results_df["top_isoform_entropy"].max()
+        return [x_min, x_max], [y_min, y_max]
+
+    _scatter_axis_ranges = {
+        "mean": _axis_ranges_for_results(results_df_mean),
+        "sum": _axis_ranges_for_results(results_df_sum),
+    }
+
     # Pre-convert table data to list-of-dicts once (server-side, never sent to browser)
     _table_mean_records = table_df_mean.to_dict('records') if table_df_mean is not None else []
     _table_sum_records  = table_df_sum.to_dict('records')  if table_df_sum  is not None else []
@@ -437,10 +485,11 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
          Output("gene-table", "data")],
         [Input("dataset-toggle", "value"),
          Input("cds-filter-toggle", "value"),
+         Input("negative-spearman-toggle", "value"),
          Input("3d-filter-toggle", "value"),
          Input("domain-filter-toggle", "value")],
     )
-    def update_table(dataset, cds_filter, three_d_filter, domain_filter):
+    def update_table(dataset, cds_filter, negative_spearman_filter, three_d_filter, domain_filter):
         """Update table based on selected dataset, CDS filter, 3D filter, and domain filter."""
         table_data = _table_mean_records if dataset == 'mean' else _table_sum_records
 
@@ -459,6 +508,11 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         if cds_filter and 'filter_cds' in cds_filter:
             # Filter to only show genes with Has CDS = True
             table_data = [row for row in table_data if row.get("Has CDS") == True]
+
+        # Apply negative Spearman filter if enabled
+        if negative_spearman_filter and 'negative_only' in negative_spearman_filter:
+            table_data = [row for row in table_data
+                          if row.get("Min Spearman") is not None and row.get("Min Spearman") <= 0]
 
         # Apply 3D structure filter if enabled
         if three_d_filter and 'filter_3d' in three_d_filter:
@@ -481,6 +535,22 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             log.info("update_table: domain filter reduced rows %d -> %d", before, len(table_data))
 
         return columns, table_data
+
+    @app.callback(
+        [Output("cds-filter-toggle", "value"),
+         Output("cds-filter-toggle", "options")],
+        [Input("3d-filter-toggle", "value"),
+         Input("domain-filter-toggle", "value")],
+        [State("cds-filter-toggle", "value")],
+    )
+    def sync_cds_filter_with_structures(three_d_filter, domain_filter, current_cds):
+        """Force CDS filter on (and disabled) when 3D or domain filters are active."""
+        forced_on = bool((three_d_filter and 'filter_3d' in three_d_filter) or
+                         (domain_filter and 'filter_domains' in domain_filter))
+        options = [{'label': ' Only genes with CDS', 'value': 'filter_cds', 'disabled': forced_on}]
+        if forced_on:
+            return ['filter_cds'], options
+        return current_cds or [], options
 
     @app.callback(
         Output("selected-transcript", "data"),
@@ -587,28 +657,70 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
     # Cache the base scatter figure (no highlight) per dataset.
     # Rebuilding px.scatter over all genes is expensive; only the gold ring
     # overlay changes when a gene is selected.
-    @functools.lru_cache(maxsize=4)
-    def _base_scatter(dataset: str):
+    def _filtered_results(results_df, cds_filter, negative_spearman_filter, three_d_filter, domain_filter):
+        filtered = results_df
+        if cds_filter and 'filter_cds' in cds_filter and _genes_with_cds:
+            filtered = filtered[filtered["gene_id"].isin(_genes_with_cds)]
+        if negative_spearman_filter and 'negative_only' in negative_spearman_filter:
+            filtered = filtered[filtered["min_spearman"] <= 0]
+        if three_d_filter and 'filter_3d' in three_d_filter:
+            if _genes_with_3d:
+                filtered = filtered[filtered["gene_id"].isin(_genes_with_3d)]
+            else:
+                filtered = filtered.iloc[0:0]
+        if domain_filter and 'filter_domains' in domain_filter:
+            if _genes_with_domains:
+                filtered = filtered[filtered["gene_id"].isin(_genes_with_domains)]
+            else:
+                filtered = filtered.iloc[0:0]
+        return filtered
+
+    @functools.lru_cache(maxsize=8)
+    def _base_scatter(dataset: str, cds_only: bool, negative_only: bool,
+                      three_d_only: bool, domains_only: bool):
         results_df = results_df_mean if dataset == 'mean' else results_df_sum
-        return fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=None, gene_names=gene_names)
+        cds_filter = ['filter_cds'] if cds_only else []
+        negative_filter = ['negative_only'] if negative_only else []
+        three_d_filter = ['filter_3d'] if three_d_only else []
+        domain_filter = ['filter_domains'] if domains_only else []
+        filtered = _filtered_results(results_df, cds_filter, negative_filter, three_d_filter, domain_filter)
+        x_range, y_range = _scatter_axis_ranges.get(dataset, (None, None))
+        return fig_summed_vs_top_entropy_colored_by_min_spearman(
+            filtered,
+            selected_gene=None,
+            gene_names=gene_names,
+            x_range=x_range,
+            y_range=y_range,
+        )
 
     @app.callback(
         Output("plot-entropy-scatter", "figure"),
         [Input("selected-gene", "data"),
-         Input("dataset-toggle", "value")],
+         Input("dataset-toggle", "value"),
+         Input("cds-filter-toggle", "value"),
+         Input("negative-spearman-toggle", "value"),
+         Input("3d-filter-toggle", "value"),
+         Input("domain-filter-toggle", "value")],
     )
-    def update_scatter_highlight(selected_gene, dataset):
+    def update_scatter_highlight(selected_gene, dataset, cds_filter,
+                                 negative_spearman_filter, three_d_filter, domain_filter):
         """Update scatter plot to highlight selected gene.
 
         The expensive base figure is cached per dataset; only the gold selection
         ring is added on top, so clicking a gene is near-instant.
         """
         import copy
-        fig = copy.deepcopy(_base_scatter(dataset))
+        cds_only = bool(cds_filter and 'filter_cds' in cds_filter)
+        negative_only = bool(negative_spearman_filter and 'negative_only' in negative_spearman_filter)
+        three_d_only = bool(three_d_filter and 'filter_3d' in three_d_filter)
+        domains_only = bool(domain_filter and 'filter_domains' in domain_filter)
+        fig = copy.deepcopy(_base_scatter(dataset, cds_only, negative_only, three_d_only, domains_only))
         if not selected_gene:
             return fig
 
         results_df = results_df_mean if dataset == 'mean' else results_df_sum
+        results_df = _filtered_results(results_df, cds_filter, negative_spearman_filter,
+                                       three_d_filter, domain_filter)
         sel = results_df[results_df["gene_id"] == selected_gene]
         if not sel.empty:
             fig.add_trace(go.Scatter(

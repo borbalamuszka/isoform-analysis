@@ -285,8 +285,6 @@ def prepare_table_data(results_df, isoforms_by_gene=None, gene_names=None,
         base_cols.append("Has 3D")
     if "Has Domains" in df_table.columns:
         base_cols.append("Has Domains")
-    if "Rank (Expr)" in df_table.columns:
-        base_cols.append("Rank (Expr)")
     base_cols.extend(["Mean Expression", "Min Spearman", "Top Entropy", "Summed Entropy"])
     
     df_table = df_table[base_cols]

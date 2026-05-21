@@ -4,7 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
-def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=None, gene_names=None):
+def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=None,
+                                                      gene_names=None, x_range=None, y_range=None):
     """Create scatter plot of summed vs top isoform entropy.
 
     Assumes min_spearman and rank are pre-computed in results_df.
@@ -45,7 +46,7 @@ def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=
         y="Top Isoform Entropy",
         color="Min Spearman",
         size="Number of Isoforms",
-        text="Rank",
+    text=None,
         # Prefer showing the gene name when available; fall back to Gene ID.
         hover_name=("Gene Name" if "Gene Name" in df_plot.columns else "Gene ID"),
         hover_data=["Number of Isoforms", "Min Spearman", "Rank"],
@@ -53,7 +54,7 @@ def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=
         color_continuous_scale=colorscale,
         range_color=(-1.0, 1.0),
     )
-    fig.update_traces(textposition='top center', textfont=dict(size=9))
+    
     fig.update_traces(hoverlabel=dict(bgcolor="#E8F4FF", font_color="black"))
 
     # Highlight selected gene
@@ -74,5 +75,16 @@ def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=
                 name='Selected'
             ))
 
-    fig.update_layout(margin=dict(l=40, r=20, t=40, b=40))
+    xaxis = dict(showgrid=False)
+    yaxis = dict(showgrid=False)
+    if x_range is not None:
+        xaxis["range"] = x_range
+    if y_range is not None:
+        yaxis["range"] = y_range
+
+    fig.update_layout(
+        margin=dict(l=40, r=20, t=40, b=40),
+        xaxis=xaxis,
+        yaxis=yaxis,
+    )
     return fig
