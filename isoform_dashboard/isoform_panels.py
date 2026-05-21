@@ -149,6 +149,8 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
 
         fig.update_xaxes(tickangle=-45, row=1, col=i)
 
+    fig.update_yaxes(title_text="Transcripts Per Million (TPM)", row=1, col=1)
+
     fig.update_layout(
         barmode="overlay",
         margin=dict(l=Dimensions.MARGIN_LEFT, r=Dimensions.MARGIN_RIGHT,

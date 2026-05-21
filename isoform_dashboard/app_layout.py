@@ -1457,7 +1457,10 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         return [
             html.Div([
                 html.Div([
-                    html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
+                    html.Span(
+                        f"Amino Acid Sequence ({len(sequence)} residues)",
+                        style={"fontWeight": "bold"},
+                    ),
                     dcc.Clipboard(
                         id="protein-sequence-clipboard",
                         target_id="protein-sequence-text",
