@@ -169,9 +169,9 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         ], style={"marginBottom": "8px"}),
                     ]),
                     dcc.Graph(id="isoform-distribution"),
-                ], style={"width": "100%", "marginBottom": "30px"}),
-                
-                html.Hr(),
+                ], style={"width": "100%", "marginBottom": "10px"}),
+
+                html.Hr(style={"margin": "8px 0"}),
                 
                 # 2. Exon Structure (second)
                 html.Div([
@@ -181,44 +181,88 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     ),
                     dcc.Graph(id="exon-visualization"),
                     html.Div(
-                        id="domain-details-wrapper",
+                        id="selection-details-wrapper",
                         children=[
                             html.Div(
-                                [
-                                    html.Span("Domain", style={"fontWeight": "bold"}),
-                                    dcc.Clipboard(
-                                        id="domain-details-clipboard",
-                                        target_id="domain-details-text",
-                                        style={"float": "right"},
-                                        title="Copy domain details",
+                                id="transcript-details-wrapper",
+                                children=[
+                                    html.Div(
+                                        [
+                                            html.Span("Transcript", style={"fontWeight": "bold"}),
+                                            dcc.Clipboard(
+                                                id="transcript-details-clipboard",
+                                                target_id="transcript-details-text",
+                                                style={"float": "right"},
+                                                title="Copy transcript details",
+                                            ),
+                                        ],
+                                        style={"marginBottom": "6px"},
+                                    ),
+                                    html.Pre(
+                                        id="transcript-details-text",
+                                        style={
+                                            "whiteSpace": "pre-wrap",
+                                            "margin": 0,
+                                            "fontFamily": "monospace",
+                                            "fontSize": "12px",
+                                        },
                                     ),
                                 ],
-                                style={"marginBottom": "6px"},
-                            ),
-                            html.Pre(
-                                id="domain-details-text",
                                 style={
-                                    "whiteSpace": "pre-wrap",
-                                    "margin": 0,
-                                    "fontFamily": "monospace",
-                                    "fontSize": "12px",
+                                    "flex": "1",
+                                    "padding": "8px",
+                                    "border": "1px solid #ddd",
+                                    "borderRadius": "4px",
+                                    "backgroundColor": "#fafafa",
+                                    "display": "none",
                                 },
                             ),
                             html.Div(
-                                id="domain-details-link",
-                                style={"marginTop": "2px"},
+                                id="domain-details-wrapper",
+                                children=[
+                                    html.Div(
+                                        [
+                                            html.Span("Domain", style={"fontWeight": "bold"}),
+                                            dcc.Clipboard(
+                                                id="domain-details-clipboard",
+                                                target_id="domain-details-text",
+                                                style={"float": "right"},
+                                                title="Copy domain details",
+                                            ),
+                                        ],
+                                        style={"marginBottom": "6px"},
+                                    ),
+                                    html.Pre(
+                                        id="domain-details-text",
+                                        style={
+                                            "whiteSpace": "pre-wrap",
+                                            "margin": 0,
+                                            "fontFamily": "monospace",
+                                            "fontSize": "12px",
+                                        },
+                                    ),
+                                    html.Div(
+                                        id="domain-details-link",
+                                        style={"marginTop": "2px"},
+                                    ),
+                                ],
+                                style={
+                                    "flex": "1",
+                                    "padding": "8px",
+                                    "border": "1px solid #ddd",
+                                    "borderRadius": "4px",
+                                    "backgroundColor": "#fafafa",
+                                    "display": "none",
+                                },
                             ),
                         ],
                         style={
                             "marginTop": "8px",
-                            "padding": "8px",
-                            "border": "1px solid #ddd",
-                            "borderRadius": "4px",
-                            "backgroundColor": "#fafafa",
                             "display": "none",
+                            "gap": "10px",
                         },
                     ),
-                ], style={"width": "100%", "marginBottom": "30px"}),
+                ], style={"width": "100%", "marginBottom": "18px"}),
                 
                 html.Hr(),
                 
@@ -881,7 +925,7 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
     @app.callback(
         [Output("domain-details-text", "children"),
          Output("domain-details-link", "children"),
-         Output("domain-details-wrapper", "style"),
+        Output("domain-details-wrapper", "style"),
          Output("selected-domain", "data")],
         [Input("exon-visualization", "clickData"),
          Input("selected-gene", "data")],
@@ -937,7 +981,7 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             link_child = html.Span("InterPro entry not available")
 
         visible_style = {
-            "marginTop": "8px",
+            "flex": "1",
             "padding": "8px",
             "border": "1px solid #ddd",
             "borderRadius": "4px",
@@ -945,6 +989,74 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             "display": "block",
         }
         return details_text, link_child, visible_style, domain_payload
+
+    @app.callback(
+        [Output("transcript-details-text", "children"),
+         Output("transcript-details-wrapper", "style")],
+        [Input("selected-transcript", "data"),
+         Input("selected-gene", "data"),
+         Input("dataset-toggle", "value")],
+    )
+    def update_transcript_details(selected_transcript, selected_gene, dataset):
+        """Show transcript details when a transcript is selected."""
+        hidden_style = {"display": "none"}
+        if not selected_transcript or not selected_gene:
+            return "", hidden_style
+
+        df = df_mean if dataset == 'mean' else df_sum
+        global_col = global_col_mean if dataset == 'mean' else global_col_sum
+        sub = df[df["gene_id"] == selected_gene]
+        transcript_order = []
+        if not sub.empty:
+            max_display = 120
+            if len(sub) > max_display:
+                sub = sub.nlargest(max_display, global_col)
+            sub = sub.sort_values(global_col, ascending=False)
+            transcript_order = sub["transcript_id"].tolist()
+
+        index_text = "N/A"
+        rank_text = "N/A"
+        tpm_text = "N/A"
+        if selected_transcript in transcript_order:
+            index_text = f"{transcript_order.index(selected_transcript) + 1} / {len(transcript_order)}"
+            tpm_val = sub.loc[sub["transcript_id"] == selected_transcript, global_col]
+            if not tpm_val.empty:
+                tpm_text = f"{float(tpm_val.iloc[0]):.2f}"
+
+        gene_name = gene_names.get(selected_gene, "")
+        gene_display = f"{selected_gene} ({gene_name})" if gene_name else selected_gene
+        details_lines = [
+            f"Id: {selected_transcript}",
+            f"Gene: {gene_display}",
+            f"Index: {index_text}",
+            f"TPM: {tpm_text}",
+        ]
+        details_text = "\n".join(details_lines)
+
+        visible_style = {
+            "flex": "1",
+            "padding": "8px",
+            "border": "1px solid #ddd",
+            "borderRadius": "4px",
+            "backgroundColor": "#fafafa",
+            "display": "block",
+        }
+        return details_text, visible_style
+
+    @app.callback(
+        Output("selection-details-wrapper", "style"),
+        [Input("selected-transcript", "data"),
+         Input("selected-domain", "data")],
+    )
+    def toggle_selection_details_row(selected_transcript, selected_domain):
+        """Show the details row when either transcript or domain is selected."""
+        if not selected_transcript and not selected_domain:
+            return {"display": "none"}
+        return {
+            "marginTop": "8px",
+            "display": "flex",
+            "gap": "10px",
+        }
 
     @app.callback(
        [Output("isoform-distribution", "figure"),

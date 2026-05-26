@@ -27,6 +27,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
 
     sub = sub.sort_values(global_col, ascending=False)
     transcripts = sub["transcript_id"].tolist()
+    transcript_labels = [f"{idx + 1}." for idx in range(len(transcripts))]
     global_vals = sub[global_col].astype(float).tolist()
 
     # Pre-compute colors to avoid repeated conditionals
@@ -52,7 +53,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
         # Background bars
         fig.add_trace(
             go.Bar(
-                x=transcripts,
+                x=transcript_labels,
                 y=global_vals,
                 marker=dict(
                     color=bg_colors,
@@ -61,7 +62,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
                 name=global_col,
                 customdata=transcripts,
                 showlegend=False,
-                hovertemplate='%{customdata}<br>' + global_col + ': %{y:.2f}<extra></extra>'
+                hovertemplate='Transcript: %{customdata}<br>' + global_col + ': %{y:.2f}<extra></extra>'
             ),
             row=1, col=i
         )
@@ -69,7 +70,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
         # Main bars
         fig.add_trace(
             go.Bar(
-                x=transcripts,
+                x=transcript_labels,
                 y=sample_vals,
                 name=sample,
                 marker=dict(
@@ -78,7 +79,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
                 ),
                 customdata=transcripts,
                 showlegend=False,
-                hovertemplate='%{customdata}<br>' + sample + ': %{y:.2f}<extra></extra>'
+                hovertemplate='Transcript: %{customdata}<br>' + sample + ': %{y:.2f}<extra></extra>'
             ),
             row=1, col=i
         )
@@ -122,7 +123,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
             # Single scatter trace with asymmetric error bars replaces 2*N traces
             fig.add_trace(
                 go.Scatter(
-                    x=transcripts,
+                    x=transcript_labels,
                     y=ci_mid.tolist(),
                     mode='markers',
                     marker=dict(symbol='line-ew', size=10, color='black',
@@ -138,25 +139,42 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
                     ),
                     showlegend=False,
                     hovertemplate=(
-                        '%{x}<br>'
-                        f'CI [{sample}]: [%{{customdata[0]:.2f}}, %{{customdata[1]:.2f}}]'
+                        'Transcript: %{customdata[0]}<br>'
+                        f'CI [{sample}]: [%{{customdata[1]:.2f}}, %{{customdata[2]:.2f}}]'
                         '<extra></extra>'
                     ),
-                    customdata=list(zip(ci_lower_vals, ci_upper_vals)),
+                    customdata=list(zip(transcripts, ci_lower_vals, ci_upper_vals)),
                 ),
                 row=1, col=i,
             )
 
-        fig.update_xaxes(tickangle=-45, row=1, col=i)
+    fig.update_xaxes(tickangle=0, tickfont=dict(size=16))
 
-    fig.update_yaxes(title_text="Transcripts Per Million (TPM)", row=1, col=1)
+    fig.update_yaxes(
+        title_text="Transcripts Per Million (TPM)",
+        title_font=dict(size=16),
+        tickfont=dict(size=16),
+        row=1,
+        col=1,
+    )
 
     fig.update_layout(
         barmode="overlay",
-        margin=dict(l=Dimensions.MARGIN_LEFT, r=Dimensions.MARGIN_RIGHT,
-                   t=Dimensions.MARGIN_TOP, b=Dimensions.MARGIN_BOTTOM),
+    margin=dict(l=Dimensions.MARGIN_LEFT, r=Dimensions.MARGIN_RIGHT,
+           t=Dimensions.MARGIN_TOP, b=55),
         height=Dimensions.CHART_HEIGHT_ISOFORMS,
         showlegend=False,
-        font=dict(family="Arial, sans-serif", size=14, color="#333333")
+    font=dict(family="Arial, sans-serif", size=16, color="#333333"),
+    )
+
+    fig.add_annotation(
+        text="Transcript index (sorted by TPM)",
+        x=0.5,
+    y=-0.27,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        xanchor="center",
+    font=dict(size=16, color="#333333"),
     )
     return fig

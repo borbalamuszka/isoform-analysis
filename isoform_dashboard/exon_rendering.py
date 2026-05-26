@@ -65,13 +65,9 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
     else:
         sorted_isoforms = sorted(isoforms.items())
 
-    max_label_chars = 22
     label_texts = []
     for idx, (tid, _) in enumerate(sorted_isoforms):
-        label = f"{idx + 1}. {tid}"
-        if len(label) > max_label_chars:
-            label = f"{label[:max_label_chars - 1]}…"
-        label_texts.append(label)
+        label_texts.append(f"{idx + 1}.")
 
     fig = go.Figure()
     global_domain_colors = build_gene_domain_color_map(
@@ -248,7 +244,7 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
             showarrow=False,
             xanchor='right',
             yanchor='middle',
-            font=dict(size=12, family="Arial",
+            font=dict(size=14, family="Arial",
                      weight=label_weight,
                      color=label_color)
         )
@@ -272,12 +268,39 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
     top_y = n_isoforms * row_height + 0.6
     arrow_label = (
         "Strand direction "
-        f"<span style='font-size:16px; font-weight:700;'>{arrow_text}</span>"
+        f"<span style='font-size:20px; font-weight:700;'>{arrow_text}</span>"
     )
+    # Scale bar: approximate exon bp length for ~40 px width
+    scale_bp = int(round(80 * exon_scale_bp_per_unit))
+    scale_step = 50 if scale_bp < 500 else 100
+    scale_bp = max(scale_step, int(round(scale_bp / scale_step) * scale_step))
+    scale_units = scale_bp / exon_scale_bp_per_unit
+    scale_x_end = total_width * 0.93
+    scale_x_start = max(0, scale_x_end - scale_units)
+
+    arrow_x = max(0, scale_x_start - (30 * exon_scale_bp_per_unit))
     fig.add_annotation(
-        x=total_width * 0.5,
+        x=arrow_x,
         y=top_y,
         text=arrow_label,
+        showarrow=False,
+        yanchor='bottom',
+        xanchor='right',
+        font=dict(size=14, color='#333', family="Arial")
+    )
+
+    fig.add_shape(
+        type="line",
+        x0=scale_x_start,
+        x1=scale_x_end,
+        y0=top_y,
+        y1=top_y,
+        line=dict(color="#333", width=2),
+    )
+    fig.add_annotation(
+        x=(scale_x_start + scale_x_end) / 2,
+        y=top_y,
+        text=f"{scale_bp} bp",
         showarrow=False,
         yanchor='bottom',
         font=dict(size=12, color='#333')

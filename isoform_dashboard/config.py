@@ -55,7 +55,7 @@ class Dimensions:
     """Layout and sizing constants."""
     
     # Chart heights
-    CHART_HEIGHT_ISOFORMS = 450
+    CHART_HEIGHT_ISOFORMS = 300
     CHART_HEIGHT_EXONS = 200  # min height
     EXONS_HEIGHT_PER_ISOFORM = 40
     
