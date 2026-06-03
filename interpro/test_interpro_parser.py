@@ -8,8 +8,9 @@ import json
 import sys
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add repo root to path
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT_DIR))
 
 from isoform_dashboard.interpro_parser import (
     extract_domains_from_result,
@@ -83,7 +84,7 @@ def test_domain_extraction():
     print("TEST 2: Domain Extraction from InterPro JSON")
     print("="*80)
     
-    json_path = Path(__file__).parent / "data/neuro_project/output/interpro_results/old/G65356.7_ENST00000304501.2.json"
+    json_path = ROOT_DIR / "data/neuro_project/output/interpro_results/old/G65356.7_ENST00000304501.2.json"
     
     if not json_path.exists():
         print(f"\n⚠ WARNING: Test file not found at {json_path}")
@@ -153,7 +154,7 @@ def test_full_pipeline():
         }
     }
     
-    interpro_dir = Path(__file__).parent / "data/neuro_project/output/interpro_results/old"
+    interpro_dir = ROOT_DIR / "data/neuro_project/output/interpro_results/old"
     
     if not interpro_dir.exists():
         print(f"\n⚠ WARNING: InterPro directory not found at {interpro_dir}")
