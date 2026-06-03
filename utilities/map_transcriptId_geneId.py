@@ -1,3 +1,23 @@
+"""Transcript/gene mapping and expression stats utility.
+
+This script can:
+- Build transcript↔gene mappings from a GTF file and report ambiguous mappings.
+- Compute expression and CDS statistics from an expression matrix + GTF.
+
+Usage examples:
+    Mapping report (default):
+        python -m utilities.map_transcriptId_geneId --gtf /path/to/expressed_isoforms.gtf
+
+    Expression stats:
+        python -m utilities.map_transcriptId_geneId --mode stats \
+            --gtf /path/to/expressed_isoforms.gtf \
+            --matrix /path/to/expressed_isoforms_matrix.txt
+
+Notes:
+    Explicit --gtf and --matrix paths are recommended unless you intend to use
+    the default neuro_project files.
+"""
+
 # %%
 
 from pathlib import Path
@@ -180,16 +200,18 @@ def report_expression_stats(gtf_path, matrix_path, cutoff_pct=1.5):
 
 def parse_args():
     base_dir = Path(__file__).resolve().parents[1]
+    default_gtf = base_dir / "data/neuro_project/expressed_isoforms.gtf"
+    default_matrix = base_dir / "data/neuro_project/expressed_isoforms_matrix.txt"
     parser = argparse.ArgumentParser(description="Transcript/gene mapping and stats")
     parser.add_argument(
         "--gtf",
-        default=base_dir / "data/neuro_project/expressed_isoforms.gtf",
+        default=default_gtf,
         type=Path,
         help="GTF file path",
     )
     parser.add_argument(
         "--matrix",
-        default=base_dir / "data/neuro_project/expressed_isoforms_matrix.txt",
+        default=default_matrix,
         type=Path,
         help="Expression matrix TSV path",
     )
@@ -205,7 +227,11 @@ def parse_args():
         default=1.5,
         help="Transcript contribution cutoff (percent) for stats mode",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    args._default_gtf = default_gtf
+    args._default_matrix = default_matrix
+    return args
+
 
 def main():
     args = parse_args()

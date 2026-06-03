@@ -56,6 +56,9 @@ def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=
     )
     
     fig.update_traces(hoverlabel=dict(bgcolor="#E8F4FF", font_color="black"))
+    fig.update_layout(
+        coloraxis_colorbar=dict(title="Min<br>Spearman")
+    )
 
     # Highlight selected gene
     if selected_gene:

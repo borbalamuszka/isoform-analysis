@@ -338,13 +338,13 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     ),
                     dcc.Checklist(
                         id='3d-filter-toggle',
-                        options=[{'label': ' Only genes with 3D structure', 'value': 'filter_3d'}],
+                        options=[{'label': ' Genes with 3D structure', 'value': 'filter_3d'}],
                         value=[],
                         style={'display': 'inline-block', 'marginRight': '20px'}
                     ),
                     dcc.Checklist(
                         id='domain-filter-toggle',
-                        options=[{'label': ' Only genes with domains', 'value': 'filter_domains'}],
+                        options=[{'label': ' Genes with domains', 'value': 'filter_domains'}],
                         value=[],
                         style={'display': 'inline-block'}
                     )
@@ -591,7 +591,7 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         """Force CDS filter on (and disabled) when 3D or domain filters are active."""
         forced_on = bool((three_d_filter and 'filter_3d' in three_d_filter) or
                          (domain_filter and 'filter_domains' in domain_filter))
-        options = [{'label': ' Only genes with CDS', 'value': 'filter_cds', 'disabled': forced_on}]
+        options = [{'label': ' Genes with CDS', 'value': 'filter_cds', 'disabled': forced_on}]
         if forced_on:
             return ['filter_cds'], options
         return current_cds or [], options
@@ -759,6 +759,11 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         three_d_only = bool(three_d_filter and 'filter_3d' in three_d_filter)
         domains_only = bool(domain_filter and 'filter_domains' in domain_filter)
         fig = copy.deepcopy(_base_scatter(dataset, cds_only, negative_only, three_d_only, domains_only))
+        x_range, y_range = _scatter_axis_ranges.get(dataset, (None, None))
+        if x_range is not None:
+            fig.update_xaxes(range=x_range, autorange=False)
+        if y_range is not None:
+            fig.update_yaxes(range=y_range, autorange=False)
         if not selected_gene:
             return fig
 
