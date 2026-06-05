@@ -110,21 +110,25 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
                 ci_lower_vals.append(lower if lower is not None else float('nan'))
                 ci_upper_vals.append(upper if upper is not None else float('nan'))
 
-            # Build error bar arrays: symmetric around midpoint
-            ci_mid = np.array([
-                (lo + hi) / 2 if not (np.isnan(lo) or np.isnan(hi)) else float('nan')
-                for lo, hi in zip(ci_lower_vals, ci_upper_vals)
+            # Build error bar arrays centered on the sample data values
+            ci_center = np.array([
+                val if not np.isnan(val) else float('nan')
+                for val in sample_vals
             ])
-            err_plus = np.array([hi - mid if not np.isnan(mid) else float('nan')
-                                  for hi, mid in zip(ci_upper_vals, ci_mid)])
-            err_minus = np.array([mid - lo if not np.isnan(mid) else float('nan')
-                                   for lo, mid in zip(ci_lower_vals, ci_mid)])
+            err_plus = np.array([
+                hi - val if not (np.isnan(hi) or np.isnan(val)) else float('nan')
+                for hi, val in zip(ci_upper_vals, ci_center)
+            ])
+            err_minus = np.array([
+                val - lo if not (np.isnan(lo) or np.isnan(val)) else float('nan')
+                for lo, val in zip(ci_lower_vals, ci_center)
+            ])
 
             # Single scatter trace with asymmetric error bars replaces 2*N traces
             fig.add_trace(
                 go.Scatter(
                     x=transcript_labels,
-                    y=ci_mid.tolist(),
+                    y=ci_center.tolist(),
                     mode='markers',
                     marker=dict(symbol='line-ew', size=10, color='black',
                                 line=dict(width=2)),
