@@ -104,10 +104,9 @@ Generates isoform distribution tables (one row per retained transcript).
 
 - **Features**
   - Filters low‑contribution isoforms by percentage cutoff.
-  - Aggregation statistics:
+  - Generates both aggregation statistics:
     - `sum`: summed expression across samples.
     - `mean`: mean expression across samples.
-    - `normalized`: per‑gene per‑sample normalization (isoforms sum to 1); global value = mean normalized contribution.
   - Grouping: sample grouping is driven by a metadata file, so `--meta-file` is required.
 - **Inputs**
   - `--matrix`: isoform expression matrix (rows = transcript_id, columns = samples).
@@ -116,17 +115,18 @@ Generates isoform distribution tables (one row per retained transcript).
   - `--output-dir`: output directory for distribution tables.
   - `--table-type`: output mode (`individual`, `aggregated`, or `both`; default: `aggregated`).
   - `--cutoff-pct`: minimum percent contribution to retain an isoform (default: 1.5).
-  - `--stat`: aggregation mode (`sum`, `mean`, or `normalized`; default: `mean`).
-  - `--meta-sample-col`: metadata column with sample identifiers (default: `sample_id`).
-  - `--meta-group-col`: metadata column to group by (default: `None`).
+  - `--meta-sample-col`: metadata column with sample identifiers (required for `aggregated`/`both` table types).
+  - `--meta-group-col`: metadata column to group by (required for `aggregated`/`both` table types).
   - `--exclude-sample-substr`: exclude samples containing this substring.
 - **Outputs**
-  - TSV tables of retained isoforms per gene / aggregation.
+  - For each selected table type, both files are generated:
+    - `distributions_sum.tsv`
+    - `distributions_mean.tsv`
 
 **Metadata file format (`--meta-file`)**
 
 - Must contain at least two columns:
-  - sample ID column (`--meta-sample-col`, typically `sample_id`)
+  - sample ID column (`--meta-sample-col`)
   - group column (`--meta-group-col`, e.g. `condition` or `cell_type`)
 - Extra columns are allowed (e.g. donor, tissue, batch).
 - Delimiter can be tab/whitespace; quoted headers/values are accepted.
@@ -136,9 +136,9 @@ Generates isoform distribution tables (one row per retained transcript).
 Example 1:
 
 ```tsv
-sample_id	condition region
-Caudate_MDD_Adult_R17353	MDD Caudate
-DLPFC_Control_Adult_R12810	Control DLPFC
+sample_id	condition	region
+Caudate_MDD_Adult_R17353	MDD	Caudate
+DLPFC_Control_Adult_R12810	Control	DLPFC
 ```
 
 Example 2:
@@ -157,7 +157,6 @@ python -m isoform_distribution.distributions \
   --meta-file data/neuro_project/metadata.tsv \
   --output-dir data/neuro_project/output/isoform_distributions \
   --table-type aggregated \
-  --stat mean \
   --meta-sample-col sample_id \
   --meta-group-col condition \
   --exclude-sample-substr Fetal
@@ -172,7 +171,6 @@ python -m isoform_distribution.distributions \
   --meta-file data/multitissue_project/meta_data.tsv \
   --output-dir data/multitissue_project/output/isoform_distributions \
   --table-type aggregated \
-  --stat mean \
   --meta-sample-col sample_id \
   --meta-group-col cell_type
 ```
