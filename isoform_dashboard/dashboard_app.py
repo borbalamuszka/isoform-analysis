@@ -44,28 +44,26 @@ from .app_layout import create_app
 def parse_args(argv=None):
     """Parse command line arguments."""
     p = argparse.ArgumentParser(description="Run Dash dashboard for isoform entropy/correlation exploration")
-    p.add_argument("--input-mean", required=False, 
-                   default="data/neuro_project/output/isoform_distributions/distributions_condition_mean.tsv",
+    p.add_argument("--input-mean", required=True,
                    help="Input gene/isoform expression TSV (mean values)")
-    p.add_argument("--input-sum", 
-                   default="data/neuro_project/output/isoform_distributions/distributions_condition_sum.tsv",
+    p.add_argument("--input-sum",
                    help="Input gene/isoform expression TSV (sum values, optional)")
     p.add_argument("--ci-file", 
-                   default="data/neuro_project/output/isoform_distributions/confidence_intervals.tsv",
+                default=None,
                    help="Bootstrap confidence intervals TSV (optional)")
     p.add_argument("--exons", 
-                   default="data/neuro_project/expressed_isoforms.gtf",
+                default=None,
                    help="Input GTF file with exon and CDS annotations (optional)")
     p.add_argument("--geometry-dir",
                    help="Path to alphafold_geometry output directory produced by "
                         "extract_3d_geometry.py.",
-                   default="data/neuro_project/output/alphafold_geometry")
+                default=None)
     p.add_argument("--proteins",
                    help="FASTA file containing protein sequences (optional).",
-                   default="data/neuro_project/proteins.fasta")
+                default=None)
     p.add_argument("--interpro-dir",
                    help="Path to InterPro scan results directory (optional).",
-                   default="data/neuro_project/output/interpro_results")
+                default=None)
     p.add_argument("--interpro-evalue-threshold", type=float, default=1e-5,
                    help="E-value threshold for InterPro domain significance (default: 1e-5)")
     p.add_argument("--port", type=int, default=8050, help="Port to serve the dashboard")

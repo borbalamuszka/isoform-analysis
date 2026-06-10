@@ -108,38 +108,81 @@ Generates isoform distribution tables (one row per retained transcript).
     - `sum`: summed expression across samples.
     - `mean`: mean expression across samples.
     - `normalized`: per‑gene per‑sample normalization (isoforms sum to 1); global value = mean normalized contribution.
-  - Metadata grouping (default): use a metadata file to map samples to groups.
+  - Grouping: sample grouping is driven by a metadata file, so `--meta-file` is required.
 - **Inputs**
   - `--matrix`: isoform expression matrix (rows = transcript_id, columns = samples).
   - `--gtf`: GTF file for transcript → gene mapping.
+  - `--meta-file`: metadata file mapping samples to groups (**required**).
   - `--output-dir`: output directory for distribution tables.
+  - `--table-type`: output mode (`individual`, `aggregated`, or `both`; default: `aggregated`).
   - `--cutoff-pct`: minimum percent contribution to retain an isoform (default: 1.5).
-  - `--stat`: aggregation mode (`sum`, `mean`, or `normalized`).
+  - `--stat`: aggregation mode (`sum`, `mean`, or `normalized`; default: `mean`).
+  - `--meta-sample-col`: metadata column with sample identifiers (default: `sample_id`).
+  - `--meta-group-col`: metadata column to group by (default: `None`).
+  - `--sample-col-prefix`: prefix to strip from matrix sample column names (default: `None`).
+  - `--sample-id-sep`: separator used to split metadata sample IDs (default: `_`).
+  - `--group-value-sep`: optional separator to normalize metadata group labels by prefix (default: `None`; e.g. `_` makes `heart_LV` -> `heart`).
   - `--exclude-sample-substr`: exclude samples containing this substring.
-  - `--meta-file`: metadata file mapping samples to groups (required for aggregated tables).
-  - `--meta-sample-col`: metadata column with sample identifiers.
-  - `--meta-group-col`: metadata column to group by.
-  - `--sample-col-prefix`: prefix to strip from matrix sample column names.
-  - `--sample-id-sep`: separator used to split metadata sample IDs.
-  - `--normalize-groups`: optional group normalization.
 - **Outputs**
   - TSV tables of retained isoforms per gene / aggregation.
 
-**Example:**
+**Metadata file format (`--meta-file`)**
+
+- Must contain at least two columns:
+  - sample ID column (`--meta-sample-col`, typically `sample_id`)
+  - group column (`--meta-group-col`, e.g. `condition` or `cell_type`)
+- Extra columns are allowed (e.g. donor, tissue, batch).
+- Delimiter can be tab/whitespace; quoted headers/values are accepted.
+- Matching behavior for matrix sample columns:
+  1. exact match against metadata sample ID
+  2. fallback to prefix matching using `--sample-id-sep` (default `_`)
+  3. optional prefix stripping from matrix sample names via `--sample-col-prefix`
+- Optional group normalization:
+  - set `--group-value-sep` (e.g. `_`) to collapse group labels by prefix (`heart_LV` → `heart`)
+
+Example 1:
+
+```tsv
+sample_id	condition
+Caudate_MDD_Adult_R17353	MDD
+DLPFC_Control_Adult_R12810	Control
+```
+
+Example 2:
+
+```tsv
+sample_id	cell_type	donor
+185VYD_heart	heart_LV	ENCDO793LXB
+206TQZ_brain	brain	ENCDO669IVL
+```
+**Example (neuro project, group by condition):**
 
 ```bash
 python -m isoform_distribution.distributions \
-  --matrix data/project/expressed_isoforms_matrix.tsv \
-  --gtf data/project/expressed_isoforms.gtf \
-  --meta-file data/project/meta_data.tsv \
-  --output-dir data/project/output/isoform_distributions \
+  --matrix data/neuro_project/expressed_isoforms_matrix.tsv \
+  --gtf data/neuro_project/expressed_isoforms.gtf \
+  --meta-file data/neuro_project/metadata.tsv \
+  --output-dir data/neuro_project/output/isoform_distributions3 \
+  --table-type aggregated \
+  --stat mean \
   --meta-sample-col sample_id \
-  --meta-group-col cell_type  \
-  --sample-col-prefix ENCFF \
-  --sample-id-sep _ \
-  --normalize-groups heart_brain \
-  --stat sum \
-  --cutoff-pct 1.5
+  --meta-group-col condition \
+  --sample-col-prefix ""
+```
+
+**Example (multitissue project, group by cell type):**
+
+```bash
+python -m isoform_distribution.distributions \
+  --matrix data/multitissue_project/merged_quant.txt \
+  --gtf data/multitissue_project/rescue_output_rescued_corrected.corrected.gtf \
+  --meta-file data/multitissue_project/meta_data.tsv \
+  --output-dir data/multitissue_project/output/isoform_distributions3 \
+  --table-type aggregated \
+  --stat mean \
+  --meta-sample-col sample_id \
+  --meta-group-col cell_type \
+  --group-value-sep _
 ```
 
 ### Dashboard: `isoform_dashboard/dashboard_app.py`

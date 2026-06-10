@@ -12,21 +12,24 @@ def get_multi_isoform_genes(df_isoform_matrix):
     gene_isoform_counts = df_isoform_matrix.groupby('gene_id').size()
     return gene_isoform_counts[gene_isoform_counts > 1].index.tolist()
 
-def parse_sample_name(sample_name):
+def parse_sample_name(sample_name, sep='_', region_index=0, condition_index=1):
     """
-    Parse sample name to extract brain region and condition.
-    
+    Parse sample name to extract region and condition tokens.
+
     Args:
         sample_name: Sample name string (format: region_condition_...)
-        
+        sep: Token separator used in sample names
+        region_index: Token index for the region value
+        condition_index: Token index for the condition value
+
     Returns:
-        Tuple of (brain_region, condition) or (None, None) if parsing fails
+        Tuple of (region, condition) or (None, None) if parsing fails
     """
-    parts = sample_name.split('_')
-    if len(parts) >= 2:
-        brain_region = parts[0]
-        condition = parts[1]
-        return brain_region, condition
+    parts = sample_name.split(sep)
+    if len(parts) > max(region_index, condition_index):
+        region = parts[region_index]
+        condition = parts[condition_index]
+        return region, condition
     return None, None
 
 
@@ -56,15 +59,19 @@ def _normalize_gene_samples(gene_transcripts, sample_cols):
     return normalized
 
 
-def aggregate_samples_by_group(df_isoform_matrix, sample_cols, group_by='region', stat='sum'):
+def aggregate_samples_by_group(df_isoform_matrix, sample_cols, group_by='region', stat='sum',
+                               sample_name_sep='_', region_index=0, condition_index=1):
     """
     Aggregate samples by brain region or condition.
     
     Args:
         df_isoform_matrix: DataFrame with isoform expression data
         sample_cols: List of sample column names
-        group_by: 'region' or 'condition'
+    group_by: 'region' or 'condition'
         stat: 'sum', 'mean', or 'normalized'
+    sample_name_sep: Separator used in sample names
+    region_index: Token index for the region value
+    condition_index: Token index for the condition value
         
     Returns:
         DataFrame with aggregated data
@@ -73,9 +80,14 @@ def aggregate_samples_by_group(df_isoform_matrix, sample_cols, group_by='region'
 
     # Group samples by region/condition
     for sample_col in sample_cols:
-        brain_region, condition = parse_sample_name(sample_col)
-        if brain_region and condition:
-            group_key = brain_region if group_by == 'region' else condition
+        region, condition = parse_sample_name(
+            sample_col,
+            sep=sample_name_sep,
+            region_index=region_index,
+            condition_index=condition_index
+        )
+        if region and condition:
+            group_key = region if group_by == 'region' else condition
             aggregated_data[group_key].append(sample_col)
 
     # Aggregate data
