@@ -278,14 +278,14 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
     scale_x_end = total_width * 0.93
     scale_x_start = max(0, scale_x_end - scale_units)
 
-    arrow_x = max(0, scale_x_start - (30 * exon_scale_bp_per_unit))
+    arrow_x = total_width / 2
     fig.add_annotation(
         x=arrow_x,
         y=top_y,
         text=arrow_label,
         showarrow=False,
         yanchor='bottom',
-        xanchor='right',
+        xanchor='center',
         font=dict(size=14, color='#333', family="Arial")
     )
 

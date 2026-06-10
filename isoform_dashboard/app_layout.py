@@ -1469,7 +1469,6 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             return [
                 html.Div([
                     html.Div([
-                        html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
                         dcc.Clipboard(
                             id="protein-sequence-clipboard",
                             target_id="protein-sequence-text",
@@ -1498,7 +1497,6 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             return [
                 html.Div([
                     html.Div([
-                        html.Span("Amino Acid Sequence", style={"fontWeight": "bold"}),
                         dcc.Clipboard(
                             id="protein-sequence-clipboard",
                             target_id="protein-sequence-text",
@@ -1545,11 +1543,11 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         rows = []
         for chunk_start in range(0, len(sequence), chunk_size):
             chunk = sequence[chunk_start:chunk_start + chunk_size]
-            spans = []
+            row_spans = []
             for char_i, aa in enumerate(chunk):
                 res_1based = chunk_start + char_i + 1  # 1-based residue number
                 if hi_start is not None and hi_start <= res_1based <= hi_end:
-                    spans.append(html.Span(
+                    row_spans.append(html.Span(
                         aa,
                         style={
                             "backgroundColor": "#FFD700",
@@ -1560,47 +1558,15 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
                     ))
                 else:
                     color = "#aaa" if hi_start is not None else "#333"
-                    spans.append(html.Span(aa, style={"color": color}))
-            rows.append(html.Div(
-                spans,
-                style={"marginBottom": "4px", "letterSpacing": "0.5px",
-                       "lineHeight": "1.6"},
-            ))
+                    row_spans.append(html.Span(aa, style={"color": color}))
+            rows.append(row_spans)
 
-        # Join all rows for display and for copying
-        display_seq = "\n".join(["".join([span.props['children'] if hasattr(span, 'props') else span.children for span in row.children]) if hasattr(row, 'children') else "" for row in rows])
-        copy_seq = sequence
-
-        return [
-            html.Div([
-                html.Div([
-                    html.Span(
-                        f"Amino Acid Sequence ({len(sequence)} residues)",
-                        style={"fontWeight": "bold"},
-                    ),
-                    dcc.Clipboard(
-                        id="protein-sequence-clipboard",
-                        target_id="protein-sequence-text",
-                        style={"float": "right"},
-                        title="Copy protein sequence",
-                    ),
-                ], style={"marginBottom": "6px"}),
-                html.Pre(
-                    id="protein-sequence-text",
-                    style={
-                        "whiteSpace": "pre-wrap",
-                        "margin": 0,
-                        "fontFamily": "monospace",
-                        "fontSize": "12px",
-                        "wordBreak": "break-all",
-                        "backgroundColor": "#f9f9f9",
-                        "border": "none",
-                        "padding": 0,
-                    },
-                    children=copy_seq
-                )
-            ])
-        ]
+        # Build one sequence element for both display and clipboard target.
+        highlighted_children = []
+        for i, row_spans in enumerate(rows):
+            highlighted_children.extend(row_spans)
+            if i < len(rows) - 1:
+                highlighted_children.append("\n")
 
         # --- Header line ---
         if hi_start is not None:
@@ -1613,13 +1579,38 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             subtitle = f"{len(sequence)} aa"
             subtitle_color = "#333"
 
-        return html.Div([
-            html.P([
-                html.Span(selected_transcript,
-                          style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif"}),
-                html.Span(f"  ·  {subtitle}",
-                          style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif",
-                                 "marginLeft": "6px"}),
-            ], style={"marginBottom": "8px"}),
-            html.Div(rows),
-        ])
+        return [
+            html.Div([
+                html.Div([
+                    dcc.Clipboard(
+                        id="protein-sequence-clipboard",
+                        target_id="protein-sequence-text",
+                        style={"float": "right"},
+                        title="Copy protein sequence",
+                    ),
+                ], style={"marginBottom": "6px"}),
+                html.P([
+                    html.Span(selected_transcript,
+                              style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif"}),
+                    html.Span(f"  ·  {subtitle}",
+                              style={"fontWeight": "bold", "fontFamily": "Arial, sans-serif",
+                                     "marginLeft": "6px", "color": subtitle_color}),
+                ], style={"marginBottom": "8px"}),
+                html.Pre(
+                    id="protein-sequence-text",
+                    style={
+                        "whiteSpace": "pre-wrap",
+                        "margin": 0,
+                        "fontFamily": "monospace",
+                        "fontSize": "12px",
+                        "wordBreak": "break-all",
+                        "letterSpacing": "0.5px",
+                        "lineHeight": "1.6",
+                        "backgroundColor": "#f9f9f9",
+                        "border": "none",
+                        "padding": 0,
+                    },
+                    children=highlighted_children,
+                ),
+            ])
+        ]
