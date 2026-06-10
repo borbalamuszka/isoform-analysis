@@ -119,9 +119,6 @@ Generates isoform distribution tables (one row per retained transcript).
   - `--stat`: aggregation mode (`sum`, `mean`, or `normalized`; default: `mean`).
   - `--meta-sample-col`: metadata column with sample identifiers (default: `sample_id`).
   - `--meta-group-col`: metadata column to group by (default: `None`).
-  - `--sample-col-prefix`: prefix to strip from matrix sample column names (default: `None`).
-  - `--sample-id-sep`: separator used to split metadata sample IDs (default: `_`).
-  - `--group-value-sep`: optional separator to normalize metadata group labels by prefix (default: `None`; e.g. `_` makes `heart_LV` -> `heart`).
   - `--exclude-sample-substr`: exclude samples containing this substring.
 - **Outputs**
   - TSV tables of retained isoforms per gene / aggregation.
@@ -134,26 +131,22 @@ Generates isoform distribution tables (one row per retained transcript).
 - Extra columns are allowed (e.g. donor, tissue, batch).
 - Delimiter can be tab/whitespace; quoted headers/values are accepted.
 - Matching behavior for matrix sample columns:
-  1. exact match against metadata sample ID
-  2. fallback to prefix matching using `--sample-id-sep` (default `_`)
-  3. optional prefix stripping from matrix sample names via `--sample-col-prefix`
-- Optional group normalization:
-  - set `--group-value-sep` (e.g. `_`) to collapse group labels by prefix (`heart_LV` → `heart`)
+  - exact match against metadata sample ID (`sample_id` values should match matrix column names)
 
 Example 1:
 
 ```tsv
-sample_id	condition
-Caudate_MDD_Adult_R17353	MDD
-DLPFC_Control_Adult_R12810	Control
+sample_id	condition region
+Caudate_MDD_Adult_R17353	MDD Caudate
+DLPFC_Control_Adult_R12810	Control DLPFC
 ```
 
 Example 2:
 
 ```tsv
-sample_id	cell_type	donor
-185VYD_heart	heart_LV	ENCDO793LXB
-206TQZ_brain	brain	ENCDO669IVL
+sample_id	cell_type
+185VYD_heart	heart
+206TQZ_brain	brain
 ```
 **Example (neuro project, group by condition):**
 
@@ -162,12 +155,12 @@ python -m isoform_distribution.distributions \
   --matrix data/neuro_project/expressed_isoforms_matrix.tsv \
   --gtf data/neuro_project/expressed_isoforms.gtf \
   --meta-file data/neuro_project/metadata.tsv \
-  --output-dir data/neuro_project/output/isoform_distributions3 \
+  --output-dir data/neuro_project/output/isoform_distributions \
   --table-type aggregated \
   --stat mean \
   --meta-sample-col sample_id \
   --meta-group-col condition \
-  --sample-col-prefix ""
+  --exclude-sample-substr Fetal
 ```
 
 **Example (multitissue project, group by cell type):**
@@ -177,12 +170,11 @@ python -m isoform_distribution.distributions \
   --matrix data/multitissue_project/merged_quant.txt \
   --gtf data/multitissue_project/rescue_output_rescued_corrected.corrected.gtf \
   --meta-file data/multitissue_project/meta_data.tsv \
-  --output-dir data/multitissue_project/output/isoform_distributions3 \
+  --output-dir data/multitissue_project/output/isoform_distributions \
   --table-type aggregated \
   --stat mean \
   --meta-sample-col sample_id \
-  --meta-group-col cell_type \
-  --group-value-sep _
+  --meta-group-col cell_type
 ```
 
 ### Dashboard: `isoform_dashboard/dashboard_app.py`

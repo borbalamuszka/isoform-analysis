@@ -117,43 +117,14 @@ def _load_metadata(meta_path, sample_col, group_col):
     return meta_df
 
 
-def _normalize_group_labels(group_series, group_value_sep=None):
-    if group_value_sep:
-        # Generic normalization: collapse labels to the prefix before separator
-        # e.g., heart_LV -> heart, RegionA_subtype1 -> RegionA
-        return group_series.astype(str).str.split(group_value_sep).str[0]
-    return group_series
-
-
-def _build_groups_from_metadata(meta_df, sample_cols, sample_col_prefix='ENCFF',
-                                sample_id_sep='_', group_value_sep=None):
+def _build_groups_from_metadata(meta_df, sample_cols):
     cleaned = meta_df[['sample_id', 'group']].dropna().copy()
-    cleaned['group'] = _normalize_group_labels(
-        cleaned['group'],
-        group_value_sep=group_value_sep
-    )
 
     sample_id_map = cleaned.set_index('sample_id')['group'].to_dict()
 
-    sample_prefix_map = (
-        cleaned.assign(sample_prefix=lambda df: df['sample_id'].str.split(sample_id_sep).str[0])
-        .set_index('sample_prefix')['group']
-        .to_dict()
-    )
-
     grouped = defaultdict(list)
     for sample_col in sample_cols:
-        sample_key = sample_col
-        if sample_col_prefix:
-            sample_key = sample_col.replace(sample_col_prefix, '')
-
-        # Prefer exact sample ID matching (works for neuro metadata where sample_id
-        # equals the full matrix column name), then fallback to prefix matching.
-        group = sample_id_map.get(sample_key)
-        if group is None:
-            group = sample_prefix_map.get(sample_key)
-        if group is None and sample_id_sep:
-            group = sample_prefix_map.get(sample_key.split(sample_id_sep)[0])
+        group = sample_id_map.get(sample_col)
 
         if group:
             grouped[group].append(sample_col)
@@ -182,9 +153,7 @@ def _aggregate_samples_by_mapping(df_isoform_matrix, grouped_cols, stat='sum'):
 
 def generate_metadata_group_tables(df_isoform_matrix, sample_cols, out_dir, meta_path,
                                    meta_sample_col='sample_id', meta_group_col='cell_type',
-                                   sample_col_prefix='ENCFF', sample_id_sep='_',
                                    group_label='group',
-                                   group_value_sep=None,
                                    cutoff_pct=2, stat='sum'):
     """
     Generate aggregated tables using metadata-provided grouping.
@@ -196,9 +165,6 @@ def generate_metadata_group_tables(df_isoform_matrix, sample_cols, out_dir, meta
         meta_path: Path to metadata file
         meta_sample_col: Column in metadata that identifies samples
         meta_group_col: Column in metadata to group by
-        sample_col_prefix: Prefix to strip from sample column names
-        sample_id_sep: Separator to split sample IDs for prefix matching
-    group_value_sep: Optional separator for normalizing group labels by prefix
         group_label: Label used in output filename
         cutoff_pct: Minimum percentage contribution to keep an isoform
         stat: 'sum', 'mean', or 'normalized'
@@ -207,10 +173,7 @@ def generate_metadata_group_tables(df_isoform_matrix, sample_cols, out_dir, meta
     meta_df = _load_metadata(meta_path, meta_sample_col, meta_group_col)
     grouped_cols = _build_groups_from_metadata(
         meta_df,
-        sample_cols,
-        sample_col_prefix=sample_col_prefix,
-        sample_id_sep=sample_id_sep,
-        group_value_sep=group_value_sep
+        sample_cols
     )
     if not grouped_cols:
         raise ValueError("No groups found from metadata; check sample IDs and column names.")
@@ -239,12 +202,6 @@ def main():
                         help='Metadata column that identifies samples')
     parser.add_argument('--meta-group-col', type=str, default=None,
                         help='Metadata column to group by')
-    parser.add_argument('--sample-col-prefix', type=str, default=None,
-                        help='Prefix to strip from matrix sample column names')
-    parser.add_argument('--sample-id-sep', type=str, default='_',
-                        help='Separator used to split metadata sample IDs')
-    parser.add_argument('--group-value-sep', type=str, default=None,
-                        help='Optional separator used to normalize metadata group labels by prefix (e.g., _ for heart_LV -> heart)')
     parser.add_argument('--exclude-sample-substr', action='append', default=[],
                         help='Exclude samples containing this substring (can be repeated)')
     args = parser.parse_args()
@@ -284,9 +241,6 @@ def main():
             meta_path=meta_path,
             meta_sample_col=args.meta_sample_col,
             meta_group_col=args.meta_group_col,
-            sample_col_prefix=args.sample_col_prefix,
-            sample_id_sep=args.sample_id_sep,
-            group_value_sep=args.group_value_sep,
             group_label='group',
             cutoff_pct=args.cutoff_pct,
             stat=args.stat
