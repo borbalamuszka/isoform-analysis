@@ -48,6 +48,9 @@ def parse_args(argv=None):
                    help="Input gene/isoform expression TSV (mean values)")
     p.add_argument("--input-sum",
                    help="Input gene/isoform expression TSV (sum values, optional)")
+    p.add_argument("--gene-coexpression-dir",
+                   help="Path to directory containing precomputed sparse coexpression matrices (gene_coexpression.npz, etc.)",
+                   default=None)
     p.add_argument("--ci-file", 
                 default=None,
                    help="Bootstrap confidence intervals TSV (optional)")
@@ -219,6 +222,34 @@ def main():
         global_col_sum = global_col_mean
         results_df_sum = pd.DataFrame()
 
+    # Load precomputed coexpression matrices
+    gene_coexpression = None
+    gene_coexpression_idx = None
+    isoform_coexpression = None
+    isoform_coexpression_idx = None
+    
+    if args.gene_coexpression_dir:
+        import pickle
+        from scipy.sparse import load_npz
+        print(f"Loading coexpression matrices from: {args.gene_coexpression_dir}")
+        try:
+            gene_mat_path = os.path.join(args.gene_coexpression_dir, "gene_coexpression.npz")
+            gene_idx_path = os.path.join(args.gene_coexpression_dir, "gene_index.pkl")
+            if os.path.exists(gene_mat_path) and os.path.exists(gene_idx_path):
+                gene_coexpression = load_npz(gene_mat_path)
+                with open(gene_idx_path, 'rb') as f:
+                    gene_coexpression_idx = pickle.load(f)
+                    
+            iso_mat_path = os.path.join(args.gene_coexpression_dir, "isoform_coexpression.npz")
+            iso_idx_path = os.path.join(args.gene_coexpression_dir, "isoform_index.pkl")
+            if os.path.exists(iso_mat_path) and os.path.exists(iso_idx_path):
+                isoform_coexpression = load_npz(iso_mat_path)
+                with open(iso_idx_path, 'rb') as f:
+                    isoform_coexpression_idx = pickle.load(f)
+                    
+        except Exception as e:
+            print(f"Failed to read coexpression matrices: {e}", file=sys.stderr)
+
     # Create the Dash app
     protein_sequences = load_protein_sequences(args.proteins)
     
@@ -247,7 +278,11 @@ def main():
                     geometry_dir=args.geometry_dir,
                     protein_sequences=protein_sequences,
                     domain_mapping=domain_mapping,
-                    default_ranking=args.default_ranking)
+                    default_ranking=args.default_ranking,
+                    gene_coexpression=gene_coexpression,
+                    gene_coexpression_idx=gene_coexpression_idx,
+                    isoform_coexpression=isoform_coexpression,
+                    isoform_coexpression_idx=isoform_coexpression_idx)
     
     # Get port from environment variable (for Render) or args or default
     port = args.port if args.port is not None else int(os.environ.get('PORT', 8050))
