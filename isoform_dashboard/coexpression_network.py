@@ -7,7 +7,7 @@ from dash import html
 def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None, 
                               isoform_coexpression=None, isoform_coexpression_idx=None, 
                               target_gene=None, expanded_genes=None, 
-                              top_k_genes=10, top_k_isoforms=10, isoforms_by_gene=None):
+                              top_k_genes=10, top_k_isoforms=10, isoforms_by_gene=None, gene_names=None):
     """
     Generate Cytoscape elements using precomputed sparse matrices.
     If target_gene is provided, we compute the gene network centered around it.
@@ -101,10 +101,11 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
     # Add Gene Nodes
     for gene in gene_nodes:
         is_expanded = gene in expanded_genes
+        gene_label = gene_names.get(gene, gene) if gene_names else gene
         elements.append({
             'data': {
                 'id': gene,
-                'label': gene,
+                'label': gene_label,
                 'type': 'gene',
                 'expanded': is_expanded
             },

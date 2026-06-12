@@ -640,11 +640,12 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         Output("selected-transcript", "data"),
         [Input("isoform-distribution", "clickData"),
          Input("exon-visualization", "clickData"),
+         Input("coexpression-network", "tapNodeData"),
          Input("selected-gene", "data")],
         [State("selected-transcript", "data")]
     )
-    def update_selected_transcript(dist_click, exon_click, selected_gene, current_transcript):
-        """Update selected transcript from distribution or exon visualization clicks.
+    def update_selected_transcript(dist_click, exon_click, tap_node, selected_gene, current_transcript):
+        """Update selected transcript from distribution, exon visualization, or network clicks.
 
         Resets to None whenever the selected gene changes so the 3D viewer is
         cleared rather than showing a transcript from the previous gene.
@@ -657,6 +658,14 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         # Gene changed → clear transcript selection unconditionally
         if trigger_id == "selected-gene":
             return None
+
+        # Handle network click
+        if trigger_id == "coexpression-network" and tap_node:
+            if tap_node.get("type") == "isoform":
+                transcript_id = tap_node["id"]
+                if transcript_id == current_transcript:
+                    return None
+                return transcript_id
 
         # Handle distribution bar click
         if trigger_id == "isoform-distribution" and dist_click:
@@ -1707,6 +1716,7 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             expanded_genes=expanded_genes,
             top_k_genes=10,
             top_k_isoforms=10,
-            isoforms_by_gene=isoforms_by_gene
+            isoforms_by_gene=isoforms_by_gene,
+            gene_names=gene_names
         )
         return elements, cyto_layout
