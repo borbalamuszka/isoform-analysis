@@ -31,6 +31,7 @@ from .visualizations import (
     create_exon_visualization,
     fig_isoform_sample_panels
 )
+from .coexpression_network import create_coexpression_widget, generate_network_elements
 from .config import Colors, Dimensions
 
 # Residue-range helper (pure function, no heavy deps)
@@ -46,7 +47,11 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                geometry_dir: str = None,
                protein_sequences: dict = None,
                domain_mapping: dict = None,
-               default_ranking: str = "spearman"):
+               default_ranking: str = "spearman",
+               gene_coexpression=None,
+               gene_coexpression_idx=None,
+               isoform_coexpression=None,
+               isoform_coexpression_idx=None):
     """Create and configure the Dash application.
 
     Args:
@@ -67,13 +72,17 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         domain_mapping: Dict mapping transcript_id -> list of domain dicts (optional).
         default_ranking: Which ranking to sort the table by at startup.
             'spearman' (default) or 'expression'.
+        gene_coexpression: Precomputed sparse gene coexpression matrix (optional).
+        gene_coexpression_idx: Index array for gene coexpression matrix (optional).
+        isoform_coexpression: Precomputed sparse isoform coexpression matrix (optional).
+        isoform_coexpression_idx: Index array for isoform coexpression matrix (optional).
 
     Returns:
         Configured Dash app
     """
     protein_sequences = protein_sequences or {}
     domain_mapping = domain_mapping or {}
-    app = Dash(__name__)
+    app = Dash(__name__, suppress_callback_exceptions=True)
     app.title = "Isoform Analysis Dashboard"
 
     # Build AlphaFold geometry mapping (transcript_nodots_gene_nodots -> file paths)
@@ -282,6 +291,28 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     ], style={"marginBottom": "2px", "marginTop": "2px"}),
                     dcc.Graph(id="plot-entropy-scatter"),
                 ], style={"width": "100%"}),
+
+                # 4. Co-expression Network Section
+                html.Div(
+                    [
+                        html.Hr(style={"margin": "20px 0"}),
+                        html.Div([
+                            html.H4("Co-expression Network", style={**global_style, "marginBottom": "10px"}),
+                            html.Div(
+                                "Click on a gene node to expand it and reveal the internal isoform-to-isoform correlation structure. The network centers around the currently selected gene.",
+                                style={"fontSize": "13px", "color": "#666", "marginBottom": "10px"}
+                            ),
+                            dcc.Loading(
+                                id="loading-network",
+                                type="circle",
+                                children=[
+                                    create_coexpression_widget()
+                                ]
+                            )
+                        ], style={"width": "100%", "marginTop": "20px"})
+                    ] if gene_coexpression is not None else [],
+                    id="coexpression-network-container"
+                ),
             ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top", "paddingRight": "20px"}),
             
             # Right panel - Protein Sequence, 3D Structure and Data Table
@@ -422,9 +453,10 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     markdown_options={"link_target": "_blank"}
                 ),
             ], style={"width": "38%", "display": "inline-block", "verticalAlign": "top", "paddingLeft": "20px", "borderLeft": "2px solid #ddd"}),
-        ], style={"display": "flex", "width": "100%"}),
+        ], style={"display": "flex", "width": "100%", "marginBottom": "20px"}),
         
         dcc.Store(id="selected-gene"),
+        dcc.Store(id="expanded-network-genes", data=[]),
         dcc.Store(id="selected-transcript"),
         dcc.Store(id="selected-exon"),
     ], style={"margin": "20px", **global_style})
@@ -438,7 +470,11 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                        af_geometry_mapping=af_geometry_mapping,
                        protein_sequences=protein_sequences,
                        domain_mapping=domain_mapping,
-                       gene_names=gene_names)
+                       gene_names=gene_names,
+                       gene_coexpression=gene_coexpression,
+                       gene_coexpression_idx=gene_coexpression_idx,
+                       isoform_coexpression=isoform_coexpression,
+                       isoform_coexpression_idx=isoform_coexpression_idx)
 
     return app
 
@@ -449,7 +485,11 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
                        ci_df, ci_columns, global_col_mean, global_col_sum, sample_cols,
                        af_geometry_mapping=None, protein_sequences=None,
                        domain_mapping=None,
-                       gene_names=None):
+                       gene_names=None,
+                       gene_coexpression=None,
+                       gene_coexpression_idx=None,
+                       isoform_coexpression=None,
+                       isoform_coexpression_idx=None):
     """Register all dashboard callbacks.
 
     Args:
@@ -600,11 +640,12 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         Output("selected-transcript", "data"),
         [Input("isoform-distribution", "clickData"),
          Input("exon-visualization", "clickData"),
+         Input("coexpression-network", "tapNodeData"),
          Input("selected-gene", "data")],
         [State("selected-transcript", "data")]
     )
-    def update_selected_transcript(dist_click, exon_click, selected_gene, current_transcript):
-        """Update selected transcript from distribution or exon visualization clicks.
+    def update_selected_transcript(dist_click, exon_click, tap_node, selected_gene, current_transcript):
+        """Update selected transcript from distribution, exon visualization, or network clicks.
 
         Resets to None whenever the selected gene changes so the 3D viewer is
         cleared rather than showing a transcript from the previous gene.
@@ -617,6 +658,14 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         # Gene changed → clear transcript selection unconditionally
         if trigger_id == "selected-gene":
             return None
+
+        # Handle network click
+        if trigger_id == "coexpression-network" and tap_node:
+            if tap_node.get("type") == "isoform":
+                transcript_id = tap_node["id"]
+                if transcript_id == current_transcript:
+                    return None
+                return transcript_id
 
         # Handle distribution bar click
         if trigger_id == "isoform-distribution" and dist_click:
@@ -1614,3 +1663,60 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
                 ),
             ])
         ]
+
+    @app.callback(
+        Output("expanded-network-genes", "data"),
+        Input("coexpression-network", "tapNodeData"),
+        State("expanded-network-genes", "data"),
+    )
+    def handle_network_click(node_data, expanded_genes):
+        """Toggle expansion state of gene nodes in the network."""
+        if not node_data or node_data.get('type') != 'gene':
+            raise PreventUpdate
+            
+        gene_id = node_data['id']
+        expanded_genes = expanded_genes or []
+        if gene_id in expanded_genes:
+            expanded_genes.remove(gene_id)
+        else:
+            expanded_genes.append(gene_id)
+            
+        return expanded_genes
+
+    @app.callback(
+        [Output("coexpression-network", "elements"),
+         Output("coexpression-network", "layout")],
+        [Input("selected-gene", "data"),
+         Input("expanded-network-genes", "data"),
+         Input("dataset-toggle", "value")]
+    )
+    def update_network(selected_gene, expanded_genes, dataset):
+        """Update network elements based on selected gene and expanded nodes."""
+        # Returning the layout dict along with elements forces Cytoscape to re-run the 
+        # layout algorithm, which successfully handles the window positioning and centering.
+        cyto_layout = {
+            'name': 'cose',
+            'idealEdgeLength': 100, 'nodeOverlap': 20, 'refresh': 20, 
+            'fit': True, 'padding': 30, 'randomize': False, 
+            'componentSpacing': 100, 'nodeRepulsion': 4000, 
+            'edgeElasticity': 100, 'nestingFactor': 5, 'gravity': 80, 
+            'numIter': 1000, 'initialTemp': 200, 'coolingFactor': 0.95, 'minTemp': 1.0,
+            'animate': True
+        }
+
+        if gene_coexpression is None:
+            return [], cyto_layout
+            
+        elements = generate_network_elements(
+            gene_coexpression=gene_coexpression,
+            gene_coexpression_idx=gene_coexpression_idx,
+            isoform_coexpression=isoform_coexpression,
+            isoform_coexpression_idx=isoform_coexpression_idx,
+            target_gene=selected_gene,
+            expanded_genes=expanded_genes,
+            top_k_genes=10,
+            top_k_isoforms=10,
+            isoforms_by_gene=isoforms_by_gene,
+            gene_names=gene_names
+        )
+        return elements, cyto_layout

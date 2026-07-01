@@ -204,7 +204,8 @@ python -m isoform_dashboard.dashboard_app \
   --exons      data/project/expressed_isoforms.gtf \
   --proteins   data/project/proteins.fasta \
   --geometry-dir data/project/output/alphafold_geometry \
-  --interpro-dir data/project/output/interpro_results
+  --interpro-dir data/project/output/interpro_results \
+  --gene-coexpression-dir data/project/output/coexpression
 ```
 
 Then open `http://127.0.0.1:8050` in your browser.
@@ -248,7 +249,7 @@ python -m utilities.extract_3d_geometry \
   --gtf data/project/expressed_isoforms.gtf
 ```
 
-## Bootstrapping overview
+### Bootstrapping overview
 
 **Script:** `isoform_distribution/bootstrap_isoform_means.py`
 
@@ -270,4 +271,23 @@ python3 -m isoform_distribution.bootstrap_isoform_means \
   --output-dir data/project/output/isoform_distributions \
   --iterations 1000 \
   --seed 42
+```
+
+### Co-expression network matrices
+
+**Script:** `utilities/compute_coexpression.py`
+
+- Start from the isoform expression matrix.
+- Computes pairwise expression correlations between genes, and separately between individual isoforms.
+- Generates sparse matrices (`.npz`) and index files (`.pkl`) to efficiently store the co-expression network relationships.
+- Outputs are consumed by the dashboard to visualize an interactive, Cytoscape-powered correlation network where clicking a gene reveals its internal isoform-to-isoform correlation structure.
+
+**Usage:**
+
+```bash
+python3 -m utilities.compute_coexpression \
+  --input data/project/expressed_isoforms_matrix.tsv \
+  --output-dir data/project/output/coexpression \
+  --threshold 0.1 \
+  --chunk_size 1000
 ```
