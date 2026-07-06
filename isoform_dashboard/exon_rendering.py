@@ -67,7 +67,7 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
 
     label_texts = []
     for idx, (tid, _) in enumerate(sorted_isoforms):
-        label_texts.append(f"{idx + 1}.")
+        label_texts.append(tid)
 
     fig = go.Figure()
     global_domain_colors = build_gene_domain_color_map(
@@ -244,7 +244,7 @@ def create_exon_visualization(gene_id, isoforms_by_gene, transcript_order=None,
             showarrow=False,
             xanchor='right',
             yanchor='middle',
-            font=dict(size=14, family="Arial",
+            font=dict(size=12, family="Arial",
                      weight=label_weight,
                      color=label_color)
         )

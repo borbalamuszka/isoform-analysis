@@ -27,7 +27,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
 
     sub = sub.sort_values(global_col, ascending=False)
     transcripts = sub["transcript_id"].tolist()
-    transcript_labels = [f"{idx + 1}." for idx in range(len(transcripts))]
+    # Use transcript IDs directly as bar x-labels (the sort order is preserved).
     global_vals = sub[global_col].astype(float).tolist()
 
     # Pre-compute colors to avoid repeated conditionals
@@ -53,7 +53,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
         # Background bars
         fig.add_trace(
             go.Bar(
-                x=transcript_labels,
+                x=transcripts,
                 y=global_vals,
                 marker=dict(
                     color=bg_colors,
@@ -70,7 +70,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
         # Main bars
         fig.add_trace(
             go.Bar(
-                x=transcript_labels,
+                x=transcripts,
                 y=sample_vals,
                 name=sample,
                 marker=dict(
@@ -127,7 +127,7 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
             # Single scatter trace with asymmetric error bars replaces 2*N traces
             fig.add_trace(
                 go.Scatter(
-                    x=transcript_labels,
+                    x=transcripts,
                     y=ci_center.tolist(),
                     mode='markers',
                     marker=dict(symbol='line-ew', size=10, color='black',
@@ -152,7 +152,8 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
                 row=1, col=i,
             )
 
-    fig.update_xaxes(tickangle=0, tickfont=dict(size=16))
+    # Slant tick labels so long transcript IDs are readable without overlap.
+    fig.update_xaxes(tickangle=-45, tickfont=dict(size=9))
 
     fig.update_yaxes(
         title_text="Transcripts Per Million (TPM)",
@@ -164,21 +165,12 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
 
     fig.update_layout(
         barmode="overlay",
-    margin=dict(l=Dimensions.MARGIN_LEFT, r=Dimensions.MARGIN_RIGHT,
-           t=Dimensions.MARGIN_TOP, b=55),
+        margin=dict(l=Dimensions.MARGIN_LEFT, r=Dimensions.MARGIN_RIGHT,
+                    t=Dimensions.MARGIN_TOP, b=120),
         height=Dimensions.CHART_HEIGHT_ISOFORMS,
         showlegend=False,
-    font=dict(family="Arial, sans-serif", size=16, color="#333333"),
+        font=dict(family="Arial, sans-serif", size=13, color="#333333"),
     )
 
-    fig.add_annotation(
-        text="Transcript index (sorted by TPM)",
-        x=0.5,
-    y=-0.27,
-        xref="paper",
-        yref="paper",
-        showarrow=False,
-        xanchor="center",
-    font=dict(size=16, color="#333333"),
-    )
+
     return fig

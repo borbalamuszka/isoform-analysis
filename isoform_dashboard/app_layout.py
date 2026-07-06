@@ -306,7 +306,21 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                 id="loading-network",
                                 type="circle",
                                 children=[
-                                    create_coexpression_widget()
+                                    create_coexpression_widget(),
+                                    html.Div([
+                                        html.Label("Correlation Threshold (|r|): ", style={"fontSize": "13px", "fontWeight": "bold", "marginRight": "10px"}),
+                                        dcc.Input(
+                                            id="network-threshold-input",
+                                            type="number",
+                                            min=0.0,
+                                            max=1.0,
+                                            step=0.01,
+                                            value=0.1,
+                                            debounce=True,
+                                            style={"width": "80px", "padding": "4px", "borderRadius": "4px", "border": "1px solid #ccc"}
+                                        ),
+                                        html.Span(" (Press Enter to apply)", style={"fontSize": "11px", "color": "#888", "marginLeft": "5px"})
+                                    ], style={"marginTop": "10px", "display": "flex", "alignItems": "center"})
                                 ]
                             )
                         ], style={"width": "100%", "marginTop": "20px"})
@@ -457,6 +471,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         
         dcc.Store(id="selected-gene"),
         dcc.Store(id="expanded-network-genes", data=[]),
+        dcc.Store(id="expanded-gene-position", data=None),
         dcc.Store(id="selected-transcript"),
         dcc.Store(id="selected-exon"),
     ], style={"margin": "20px", **global_style})
@@ -708,18 +723,28 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
     @app.callback(
         Output("selected-gene", "data"),
         [Input("plot-entropy-scatter", "clickData"),
-         Input("gene-table", "derived_virtual_selected_rows")],
+         Input("gene-table", "derived_virtual_selected_rows"),
+         Input("coexpression-network", "tapNodeData")],
         [State("selected-gene", "data"),
          State("gene-table", "derived_virtual_data")]
     )
-    def update_selected_gene(click_data, selected_rows, current_gene, table_data):
-        """Update selected gene from scatter plot click or table selection."""
+    def update_selected_gene(click_data, selected_rows, network_click, current_gene, table_data):
+        """Update selected gene from scatter plot click, table selection, or network node click."""
         # Determine which input triggered the callback
         if not callback_context.triggered:
             return current_gene
         
         trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
         
+        # Handle network node click
+        if trigger_id == "coexpression-network" and network_click:
+            if network_click.get("type") == "gene":
+                gene_id = network_click.get("id")
+                if gene_id:
+                    return gene_id
+            else:
+                raise PreventUpdate
+
         # Handle table row selection
         if trigger_id == "gene-table" and selected_rows and len(selected_rows) > 0:
             row_idx = selected_rows[0]
@@ -1665,48 +1690,98 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         ]
 
     @app.callback(
-        Output("expanded-network-genes", "data"),
-        Input("coexpression-network", "tapNodeData"),
+        [Output("expanded-network-genes", "data"),
+         Output("expanded-gene-position", "data")],
+        [Input("coexpression-network", "tapNode"),
+         Input("selected-gene", "data")],
         State("expanded-network-genes", "data"),
     )
-    def handle_network_click(node_data, expanded_genes):
-        """Toggle expansion state of gene nodes in the network."""
-        if not node_data or node_data.get('type') != 'gene':
+    def handle_network_click(tap_node, selected_gene, expanded_genes):
+        """Manage gene-node expansion in the network.
+
+        Two triggers:
+        - selected-gene changes: clear all expansions so the new ego network
+          starts clean with no stale compound nodes.
+        - tapNode (user clicks a node): enforce single-expansion and capture
+          the node's current rendered position so the compound box can be
+          offset from that position when re-drawn.
+        """
+        if not callback_context.triggered:
             raise PreventUpdate
-            
+
+        trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
+
+        # Gene selection changed
+        if trigger_id == "selected-gene":
+            # If the newly selected gene is already in the expanded genes list
+            # (which happens if the user clicked the node in the network itself),
+            # do not wipe the expansions. Otherwise, wipe expansions for a clean start.
+            if expanded_genes and selected_gene in expanded_genes:
+                return no_update, no_update
+            return [], None
+
+        # Node tapped in the network
+        if not tap_node:
+            raise PreventUpdate
+
+        node_data = tap_node.get('data', {})
+        position  = tap_node.get('position', None)  # {'x': ..., 'y': ...}
+
+        if node_data.get('type') != 'gene':
+            raise PreventUpdate
+
         gene_id = node_data['id']
         expanded_genes = expanded_genes or []
+
         if gene_id in expanded_genes:
-            expanded_genes.remove(gene_id)
+            # Clicking the already-open gene collapses it
+            return [], None
         else:
-            expanded_genes.append(gene_id)
-            
-        return expanded_genes
+            # Replace whatever was open with just this gene; record its position
+            return [gene_id], position
 
     @app.callback(
         [Output("coexpression-network", "elements"),
          Output("coexpression-network", "layout")],
         [Input("selected-gene", "data"),
          Input("expanded-network-genes", "data"),
-         Input("dataset-toggle", "value")]
+         Input("dataset-toggle", "value"),
+         Input("network-threshold-input", "value")],
+        State("expanded-gene-position", "data"),
     )
-    def update_network(selected_gene, expanded_genes, dataset):
-        """Update network elements based on selected gene and expanded nodes."""
-        # Returning the layout dict along with elements forces Cytoscape to re-run the 
-        # layout algorithm, which successfully handles the window positioning and centering.
+    def update_network(selected_gene, expanded_genes, dataset, threshold, expanded_gene_position):
+        """Update network elements based on selected gene, expanded nodes, and threshold."""
         cyto_layout = {
             'name': 'cose',
-            'idealEdgeLength': 100, 'nodeOverlap': 20, 'refresh': 20, 
-            'fit': True, 'padding': 30, 'randomize': False, 
-            'componentSpacing': 100, 'nodeRepulsion': 4000, 
-            'edgeElasticity': 100, 'nestingFactor': 5, 'gravity': 80, 
-            'numIter': 1000, 'initialTemp': 200, 'coolingFactor': 0.95, 'minTemp': 1.0,
-            'animate': True
+            'idealEdgeLength': 60,
+            'nodeOverlap': 10,
+            'refresh': 20,
+            'fit': True,
+            'padding': 20,
+            'randomize': False,
+            'componentSpacing': 60,
+            'nodeRepulsion': 3000,
+            'edgeElasticity': 80,
+            'nestingFactor': 0.1,
+            'gravity': 100,
+            'numIter': 1000,
+            'initialTemp': 200,
+            'coolingFactor': 0.95,
+            'minTemp': 1.0,
+            'animate': True,
         }
 
         if gene_coexpression is None:
             return [], cyto_layout
-            
+
+        # Pass the active expression DataFrame so the isoform list is filtered
+        # by expression level — matching the exon-panel's nlargest(120, global_col) cap.
+        active_df  = df_mean  if dataset == 'mean' else df_sum
+        active_col = global_col_mean if dataset == 'mean' else global_col_sum
+
+        # Handle None threshold values from layout gracefully
+        threshold_val = float(threshold) if threshold is not None else 0.1
+
         elements = generate_network_elements(
             gene_coexpression=gene_coexpression,
             gene_coexpression_idx=gene_coexpression_idx,
@@ -1717,6 +1792,49 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             top_k_genes=10,
             top_k_isoforms=10,
             isoforms_by_gene=isoforms_by_gene,
-            gene_names=gene_names
+            gene_names=gene_names,
+            df_expression=active_df,
+            global_col=active_col,
+            max_isoforms=120,
+            expanded_gene_position=expanded_gene_position,
+            threshold=threshold_val,
         )
         return elements, cyto_layout
+
+    @app.callback(
+        [Output("coexpression-network", "stylesheet"),
+         Output("coexpression-network", "layout")],
+        Input("selected-transcript", "data"),
+    )
+    def update_network_stylesheet(selected_transcript):
+        """Dynamically update coexpression network stylesheet to highlight the selected transcript
+        without triggering a full physics layout re-run.
+        """
+        from .coexpression_network import get_cytoscape_stylesheet
+        base_style = get_cytoscape_stylesheet()
+        
+        # When styling/highlighting changes, lock positions to 'preset' to prevent
+        # Cytoscape from re-running the physics (cose) layout and shifting elements.
+        preset_layout = {'name': 'preset'}
+
+        if not selected_transcript:
+            return base_style, no_update
+
+        # Append a rule specifically for the selected transcript ID
+        highlight_rule = {
+            'selector': f'node[id = "{selected_transcript}"]',
+            'style': {
+                'background-color': '#6D28D9',
+                'background-opacity': 1.0,
+                'border-width': 1.5,
+                'border-color': '#ffffff',
+                'width': '18px',
+                'height': '18px',
+                'font-size': '8px',
+                'color': '#ffffff',
+                'text-outline-color': '#4C1D95',
+                'text-outline-width': 1,
+                'z-index': 10,
+            }
+        }
+        return base_style + [highlight_rule], preset_layout
