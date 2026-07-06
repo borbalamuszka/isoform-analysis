@@ -319,7 +319,18 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                             debounce=True,
                                             style={"width": "80px", "padding": "4px", "borderRadius": "4px", "border": "1px solid #ccc"}
                                         ),
-                                        html.Span(" (Press Enter to apply)", style={"fontSize": "11px", "color": "#888", "marginLeft": "5px"})
+                                         html.Label("Max Gene Neighbors: ", style={"fontSize": "13px", "fontWeight": "bold", "marginLeft": "20px", "marginRight": "10px"}),
+                                        dcc.Input(
+                                            id="network-neighbors-input",
+                                            type="number",
+                                            min=1,
+                                            max=50,
+                                            step=1,
+                                            value=10,
+                                            debounce=True,
+                                            style={"width": "60px", "padding": "4px", "borderRadius": "4px", "border": "1px solid #ccc"}
+                                        ),
+                                        html.Span(" (Press Enter to apply)", style={"fontSize": "11px", "color": "#888", "marginLeft": "10px"})
                                     ], style={"marginTop": "10px", "display": "flex", "alignItems": "center"})
                                 ]
                             )
@@ -1746,11 +1757,12 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         [Input("selected-gene", "data"),
          Input("expanded-network-genes", "data"),
          Input("dataset-toggle", "value"),
-         Input("network-threshold-input", "value")],
+         Input("network-threshold-input", "value"),
+         Input("network-neighbors-input", "value")],
         State("expanded-gene-position", "data"),
     )
-    def update_network(selected_gene, expanded_genes, dataset, threshold, expanded_gene_position):
-        """Update network elements based on selected gene, expanded nodes, and threshold."""
+    def update_network(selected_gene, expanded_genes, dataset, threshold, max_neighbors, expanded_gene_position):
+        """Update network elements based on selected gene, expanded nodes, threshold, and max neighbors."""
         cyto_layout = {
             'name': 'cose',
             'idealEdgeLength': 60,
@@ -1779,8 +1791,9 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
         active_df  = df_mean  if dataset == 'mean' else df_sum
         active_col = global_col_mean if dataset == 'mean' else global_col_sum
 
-        # Handle None threshold values from layout gracefully
+        # Handle None threshold and neighbors values from layout gracefully
         threshold_val = float(threshold) if threshold is not None else 0.1
+        max_neighbors_val = int(max_neighbors) if max_neighbors is not None else 10
 
         elements = generate_network_elements(
             gene_coexpression=gene_coexpression,
@@ -1789,7 +1802,7 @@ def _register_callbacks(app, isoforms_by_gene, df_mean, df_sum,
             isoform_coexpression_idx=isoform_coexpression_idx,
             target_gene=selected_gene,
             expanded_genes=expanded_genes,
-            top_k_genes=10,
+            top_k_genes=max_neighbors_val,
             top_k_isoforms=10,
             isoforms_by_gene=isoforms_by_gene,
             gene_names=gene_names,
