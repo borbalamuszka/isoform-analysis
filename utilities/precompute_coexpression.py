@@ -27,19 +27,27 @@ def parse_gtf_mapping_local(gtf_path):
                 mapping[transcript_id] = gene_id
     return mapping
 
-def compute_correlation_chunked(matrix, threshold=1e-3, chunk_size=250):
+def compute_correlation_chunked(matrix, method='spearman', threshold=0.001, chunk_size=250, progress_callback=None):
     """
-    Computes the pairwise correlation matrix in chunks to display a progress bar.
-    Takes a 2D numpy array where rows are variables (genes/isoforms) and cols are observations (samples).
-    Returns a scipy sparse CSR matrix.
+    Compute Spearman or Pearson correlation chunk by chunk to save memory.
     """
     n_vars = matrix.shape[0]
     
-    # Pre-rank the data for Spearman correlation
-    print("Ranking data for Spearman correlation...")
-    ranked = rankdata(matrix, axis=1)
+    if threshold < 0.2:
+        print(f"WARNING: Threshold {threshold} is very low. This may keep billions of weak correlation entries, "
+              "potentially causing ArrayMemoryError (out of memory). Consider using a threshold >= 0.3.", 
+              file=sys.stderr, flush=True)
     
-    # Normalize ranked data for dot product correlation
+    if method == 'spearman':
+        # Pre-rank the data for Spearman correlation
+        print("Ranking data for Spearman correlation...")
+        ranked = rankdata(matrix, axis=1)
+    else:
+        # Use raw values directly for Pearson correlation
+        print("Using raw data for Pearson correlation...")
+        ranked = matrix.copy()
+        
+    # Normalize data for dot product correlation
     ranked = ranked - ranked.mean(axis=1, keepdims=True)
     norms = np.linalg.norm(ranked, axis=1, keepdims=True)
     norms[norms == 0] = 1e-10  # Prevent division by zero
@@ -61,6 +69,8 @@ def compute_correlation_chunked(matrix, threshold=1e-3, chunk_size=250):
         progress = (i / total_chunks) * 100
         sys.stdout.write(f"\rProgress: [{int(progress):3d}%] {'=' * int(progress // 2)}{' ' * (50 - int(progress // 2))}")
         sys.stdout.flush()
+        if progress_callback:
+            progress_callback(i, total_chunks)
         
         chunk = ranked[start_i:end_i]
         
@@ -97,7 +107,7 @@ def compute_correlation_chunked(matrix, threshold=1e-3, chunk_size=250):
     cols = np.concatenate(cols)
     data = np.concatenate(data)
     
-    print(f"Creating sparse matrix with {len(data)} non-zero elements...")
+    print(f"Creating and saving sparse matrix with {len(data)} non-zero elements (this may take a few moments)...", flush=True)
     return csr_matrix((data, (rows, cols)), shape=(n_vars, n_vars), dtype=np.float32)
 
 def main():
@@ -105,8 +115,9 @@ def main():
     parser.add_argument("--expression", required=True, help="Input expression matrix TSV")
     parser.add_argument("--gtf", required=True, help="Input GTF file for transcript to gene mapping")
     parser.add_argument("--outdir", default="data/co-expression", help="Output directory for sparse matrices")
-    parser.add_argument("--threshold", type=float, default=1e-3, help="Correlation magnitude threshold (default: 1e-3)")
+    parser.add_argument("--threshold", type=float, default=0.3, help="Correlation magnitude threshold (default: 0.3)")
     parser.add_argument("--chunk-size", type=int, default=250, help="Chunk size for correlation computation")
+    parser.add_argument("--method", choices=["spearman", "pearson"], default="spearman", help="Correlation method (spearman or pearson)")
     
     args = parser.parse_args()
     
@@ -139,7 +150,11 @@ def main():
     isoform_ids = df['transcript_id'].values
     isoform_matrix = df[sample_cols].values
     
-    iso_sparse = compute_correlation_chunked(isoform_matrix, threshold=args.threshold, chunk_size=args.chunk_size)
+    def progress_isoform(i, total):
+        pct = int((i / total) * 50)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
+
+    iso_sparse = compute_correlation_chunked(isoform_matrix, method=args.method, threshold=args.threshold, chunk_size=args.chunk_size, progress_callback=progress_isoform)
     
     iso_out_mat = os.path.join(args.outdir, "isoform_coexpression.npz")
     iso_out_idx = os.path.join(args.outdir, "isoform_index.pkl")
@@ -155,7 +170,11 @@ def main():
     gene_ids = gene_df.index.values
     gene_matrix = gene_df.values
     
-    gene_sparse = compute_correlation_chunked(gene_matrix, threshold=args.threshold, chunk_size=args.chunk_size)
+    def progress_gene(i, total):
+        pct = int(50 + (i / total) * 50)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
+
+    gene_sparse = compute_correlation_chunked(gene_matrix, method=args.method, threshold=args.threshold, chunk_size=args.chunk_size, progress_callback=progress_gene)
     
     gene_out_mat = os.path.join(args.outdir, "gene_coexpression.npz")
     gene_out_idx = os.path.join(args.outdir, "gene_index.pkl")
@@ -164,6 +183,7 @@ def main():
         pickle.dump(gene_ids, f)
     print(f"Saved gene sparse matrix to {gene_out_mat}")
     
+    print("[PROGRESS_PERCENT] 100", flush=True)
     print("\nPrecomputation complete.")
 
 if __name__ == "__main__":

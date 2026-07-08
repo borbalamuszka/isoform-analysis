@@ -435,7 +435,11 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
     print("="*80)
     
     # Submit jobs for all sequences
-    for transcript_id, sequence in sequences.items():
+    total_seqs = len(sequences)
+    for idx, (transcript_id, sequence) in enumerate(sequences.items()):
+        pct = int((idx / total_seqs) * 30)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
+        
         output_file = output_path / f"{transcript_id}.json"
         
         # Skip if already exists and skip_existing is True
@@ -464,15 +468,16 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
         except Exception as e:
             print(f"  ✗ Failed to submit: {e}")
             continue
-    
+            
     print(f"\n{'-'*80}")
     print(f"Total jobs submitted: {len(submitted_jobs)}")
     print(f"{'-'*80}\n")
     
     if not submitted_jobs:
+        print("[PROGRESS_PERCENT] 100", flush=True)
         print("No jobs were submitted")
         return
-    
+        
     # Wait for all jobs to complete
     print("="*80)
     print("WAITING FOR RESULTS")
@@ -481,7 +486,11 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
     completed_jobs = {}
     failed_jobs = {}
     
-    for transcript_id, job_id in submitted_jobs.items():
+    total_jobs = len(submitted_jobs)
+    for idx, (transcript_id, job_id) in enumerate(submitted_jobs.items()):
+        pct = int(30 + (idx / total_jobs) * 50)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
+        
         print(f"\nWaiting for: {transcript_id} (Job ID: {job_id})")
         success = api.wait_for_completion(
             job_id,
@@ -493,7 +502,7 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
             completed_jobs[transcript_id] = job_id
         else:
             failed_jobs[transcript_id] = job_id
-    
+            
     # Retrieve and save results
     print(f"\n{'='*80}")
     print("RETRIEVING AND SAVING RESULTS")
@@ -502,7 +511,11 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
     successful_results = 0
     failed_results = 0
     
-    for transcript_id, job_id in completed_jobs.items():
+    total_completed = len(completed_jobs)
+    for idx, (transcript_id, job_id) in enumerate(completed_jobs.items()):
+        pct = int(80 + (idx / (total_completed or 1)) * 20)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
+        
         output_file = output_path / f"{transcript_id}.json"
         
         print(f"⊙ Retrieving results for: {transcript_id}")
@@ -518,6 +531,8 @@ def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk',
         except Exception as e:
             failed_results += 1
             print(f"  ✗ Error: {e}")
+            
+    print("[PROGRESS_PERCENT] 100", flush=True)
     
     # Print summary
     print(f"\n{'='*80}")

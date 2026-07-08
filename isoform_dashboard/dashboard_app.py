@@ -44,8 +44,8 @@ from .app_layout import create_app
 def parse_args(argv=None):
     """Parse command line arguments."""
     p = argparse.ArgumentParser(description="Run Dash dashboard for isoform entropy/correlation exploration")
-    p.add_argument("--input-mean", required=True,
-                   help="Input gene/isoform expression TSV (mean values)")
+    p.add_argument("--input-mean", required=False, default=None,
+                   help="Input gene/isoform expression TSV (mean values, optional)")
     p.add_argument("--input-sum",
                    help="Input gene/isoform expression TSV (sum values, optional)")
     p.add_argument("--gene-coexpression-dir",
@@ -126,25 +126,53 @@ def main():
     """Main entry point for the dashboard application."""
     args = parse_args()
 
-    # Load mean dataset
-    if not os.path.exists(args.input_mean):
-        print(f"Input file not found: {args.input_mean}", file=sys.stderr)
-        sys.exit(1)
+    df_mean = None
+    results_df_mean = pd.DataFrame()
+    sample_cols = []
+    global_col_mean = ""
 
-    try:
-        df_mean = pd.read_csv(args.input_mean, sep="\t")
-    except Exception as e:
-        print(f"Failed to read input TSV (mean): {e}", file=sys.stderr)
-        sys.exit(1)
+    # Load mean dataset if provided
+    if args.input_mean:
+        if not os.path.exists(args.input_mean):
+            print(f"Input file not found: {args.input_mean}", file=sys.stderr)
+            sys.exit(1)
 
-    if "gene_id" not in df_mean.columns or "transcript_id" not in df_mean.columns:
-        print("Input must contain gene_id and transcript_id columns", file=sys.stderr)
-        sys.exit(1)
+        try:
+            df_mean = pd.read_csv(args.input_mean, sep="\t")
+        except Exception as e:
+            print(f"Failed to read input TSV (mean): {e}", file=sys.stderr)
+            sys.exit(1)
+
+        if "gene_id" not in df_mean.columns or "transcript_id" not in df_mean.columns:
+            print("Input must contain gene_id and transcript_id columns", file=sys.stderr)
+            sys.exit(1)
+
+        if len(df_mean.columns) < 3:
+            print("Input must have at least 3 columns (gene_id, transcript_id, and a global column)", file=sys.stderr)
+            sys.exit(1)
+        
+        global_col_mean = df_mean.columns[2]
+        print(f"Using '{global_col_mean}' as the global aggregation column for mean dataset")
+
+        # Identify sample columns
+        meta_cols_mean = {"gene_id", "transcript_id", global_col_mean}
+        sample_cols = [c for c in df_mean.columns if c not in meta_cols_mean and pd.api.types.is_numeric_dtype(df_mean[c])]
+        
+        if len(sample_cols) < 2:
+            print("Need at least two numeric sample columns to compute correlations", file=sys.stderr)
+            sys.exit(1)
+
+        # Calculate entropy and correlations for mean dataset
+        results_mean = calculate_entropy_and_correlation(df_mean, sample_cols, global_col_mean)
+        results_df_mean = pd.DataFrame(results_mean)
 
     # Load sum dataset if provided
     has_sum = False
     df_sum = None
-    if args.input_sum:
+    results_df_sum = pd.DataFrame()
+    global_col_sum = ""
+
+    if args.input_sum and df_mean is not None:
         if not os.path.exists(args.input_sum):
             print(f"Warning: Sum input file not found: {args.input_sum}", file=sys.stderr)
         else:
@@ -155,8 +183,17 @@ def main():
                 else:
                     has_sum = True
                     print(f"Loaded sum dataset from: {args.input_sum}")
+                    global_col_sum = df_sum.columns[2]
+                    print(f"Using '{global_col_sum}' as the global aggregation column for sum dataset")
+                    results_sum = calculate_entropy_and_correlation(df_sum, sample_cols, global_col_sum)
+                    results_df_sum = pd.DataFrame(results_sum)
             except Exception as e:
                 print(f"Failed to read sum TSV: {e}", file=sys.stderr)
+
+    if not has_sum:
+        # Create empty placeholder
+        global_col_sum = global_col_mean
+        results_df_sum = pd.DataFrame()
 
     # Load exon data
     isoforms_by_gene = {}
@@ -164,13 +201,16 @@ def main():
     if args.exons:
         if os.path.exists(args.exons):
             print(f"Loading exon structures from GTF file: {args.exons}")
-            isoforms_by_gene = parse_isoform_file(args.exons)
-            print(f"Loaded exon data for {len(isoforms_by_gene)} genes")
-            
-            # Also load gene names
-            print(f"Loading gene names from GTF file: {args.exons}")
-            gene_names = parse_gene_names(args.exons)
-            print(f"Loaded gene names for {len(gene_names)} genes")
+            try:
+                isoforms_by_gene = parse_isoform_file(args.exons)
+                print(f"Loaded exon data for {len(isoforms_by_gene)} genes")
+                
+                # Also load gene names
+                print(f"Loading gene names from GTF file: {args.exons}")
+                gene_names = parse_gene_names(args.exons)
+                print(f"Loaded gene names for {len(gene_names)} genes")
+            except Exception as e:
+                print(f"Failed to parse GTF: {e}", file=sys.stderr)
         else:
             print(f"Warning: GTF file not found: {args.exons}", file=sys.stderr)
 
@@ -180,47 +220,18 @@ def main():
     if args.ci_file:
         if os.path.exists(args.ci_file):
             print(f"Loading confidence intervals from: {args.ci_file}")
-            ci_df = pd.read_csv(args.ci_file, sep="\t")
-            if 'isoform' in ci_df.columns:
-                ci_df = ci_df.set_index('isoform')
-            elif ci_df.index.name != 'isoform':
-                # Assume first column is isoform
-                ci_df.index.name = 'isoform'
-            ci_columns = [col for col in ci_df.columns if col.startswith('ci_')]
-            print(f"Loaded CI data with {len(ci_columns)} CI columns for {len(ci_df)} isoforms")
+            try:
+                ci_df = pd.read_csv(args.ci_file, sep="\t")
+                if 'isoform' in ci_df.columns:
+                    ci_df = ci_df.set_index('isoform')
+                elif ci_df.index.name != 'isoform':
+                    ci_df.index.name = 'isoform'
+                ci_columns = [col for col in ci_df.columns if col.startswith('ci_')]
+                print(f"Loaded CI data with {len(ci_columns)} CI columns for {len(ci_df)} isoforms")
+            except Exception as e:
+                print(f"Failed to read CI file: {e}", file=sys.stderr)
         else:
             print(f"Warning: CI file not found: {args.ci_file}", file=sys.stderr)
-
-    # Process mean dataset
-    if len(df_mean.columns) < 3:
-        print("Input must have at least 3 columns (gene_id, transcript_id, and a global column)", file=sys.stderr)
-        sys.exit(1)
-    
-    global_col_mean = df_mean.columns[2]
-    print(f"Using '{global_col_mean}' as the global aggregation column for mean dataset")
-
-    # Identify sample columns
-    meta_cols_mean = {"gene_id", "transcript_id", global_col_mean}
-    sample_cols = [c for c in df_mean.columns if c not in meta_cols_mean and pd.api.types.is_numeric_dtype(df_mean[c])]
-    
-    if len(sample_cols) < 2:
-        print("Need at least two numeric sample columns to compute correlations", file=sys.stderr)
-        sys.exit(1)
-
-    # Calculate entropy and correlations for mean dataset
-    results_mean = calculate_entropy_and_correlation(df_mean, sample_cols, global_col_mean)
-    results_df_mean = pd.DataFrame(results_mean)
-
-    # Process sum dataset if available
-    if has_sum:
-        global_col_sum = df_sum.columns[2]
-        print(f"Using '{global_col_sum}' as the global aggregation column for sum dataset")
-        results_sum = calculate_entropy_and_correlation(df_sum, sample_cols, global_col_sum)
-        results_df_sum = pd.DataFrame(results_sum)
-    else:
-        # Create empty placeholder
-        global_col_sum = global_col_mean
-        results_df_sum = pd.DataFrame()
 
     # Load precomputed coexpression matrices
     gene_coexpression = None
@@ -282,7 +293,14 @@ def main():
                     gene_coexpression=gene_coexpression,
                     gene_coexpression_idx=gene_coexpression_idx,
                     isoform_coexpression=isoform_coexpression,
-                    isoform_coexpression_idx=isoform_coexpression_idx)
+                    isoform_coexpression_idx=isoform_coexpression_idx,
+                    path_mean=args.input_mean,
+                    path_sum=args.input_sum,
+                    path_gtf=args.exons,
+                    path_proteins=args.proteins,
+                    path_interpro_dir=args.interpro_dir,
+                    path_coexpression_dir=args.gene_coexpression_dir,
+                    path_ci=args.ci_file)
     
     # Get port from environment variable (for Render) or args or default
     port = args.port if args.port is not None else int(os.environ.get('PORT', 8050))

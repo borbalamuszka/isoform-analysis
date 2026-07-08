@@ -166,7 +166,8 @@ def bootstrap_grouped(
     # Tail drop count for 95% CI
     tail_drop = int(np.ceil(iterations * 0.025))
     
-    for group_name, group_cols in groups.items():
+    total_groups = len(groups)
+    for idx, (group_name, group_cols) in enumerate(groups.items()):
         if len(group_cols) < 1:
             continue
             
@@ -182,10 +183,16 @@ def bootstrap_grouped(
         
         for b in range(iterations):
             # Sample column indices with replacement
-            idx = rng.integers(0, n_samples, size=n_samples)
+            idx_sampled = rng.integers(0, n_samples, size=n_samples)
             # Take subset and compute mean along columns
-            subset = X[:, idx]
+            subset = X[:, idx_sampled]
             means[:, b] = subset.mean(axis=1)
+            
+            # Print progress every 10%
+            if b % max(1, iterations // 10) == 0:
+                group_pct = b / iterations
+                overall_pct = (idx + group_pct) / total_groups
+                print(f"[PROGRESS_PERCENT] {int(overall_pct * 100)}", flush=True)
         
         # Sort means for CI computation
         sorted_means = np.sort(means, axis=1)
@@ -266,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wrote confidence intervals to: {ci_out}")
     print(f"Included CIs for {len(region_cis)} regions: {sorted(region_cis.keys())}")
     print(f"Included CIs for {len(condition_cis)} conditions: {sorted(condition_cis.keys())}")
+    print("[PROGRESS_PERCENT] 100", flush=True)
 
     return 0
 

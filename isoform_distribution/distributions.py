@@ -162,13 +162,16 @@ def generate_metadata_group_tables(df_isoform_matrix, sample_cols, out_dir, meta
     if not grouped_cols:
         raise ValueError("No groups found from metadata; check sample IDs and column names.")
 
-    for stat in ['sum', 'mean']:
+    for idx, stat in enumerate(['sum', 'mean']):
+        pct = int(idx * 50)
+        print(f"[PROGRESS_PERCENT] {pct}", flush=True)
         table_label = group_label or 'aggregated'
         print(f"Generating {table_label} table with stat={stat}...")
         df_aggregated = _aggregate_samples_by_mapping(df_isoform_matrix, grouped_cols, stat=stat)
         agg_cols = [col for col in df_aggregated.columns if col != 'gene_id']
         write_isoform_table(df_aggregated, agg_cols, all_genes, out_dir, group_label,
                             cutoff_pct=cutoff_pct, stat=stat)
+    print(f"[PROGRESS_PERCENT] 100", flush=True)
 
 
 def main():

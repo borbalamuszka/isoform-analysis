@@ -258,7 +258,6 @@ def prepare_table_data(results_df, isoforms_by_gene=None, gene_names=None,
     df_table = df_table.rename(columns={
         "rank": "Rank",
         "gene_id": "Gene ID",
-        "gene_name": "Gene Name",
         "gene_name_link": "Gene Name",
         "n_isoforms": "# Isoforms",
         "max_aa_length": "Max AA Length",

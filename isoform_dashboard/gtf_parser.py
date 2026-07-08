@@ -91,8 +91,14 @@ def parse_isoform_file(filename):
             
             chrom = parts[0]
             feature_type = parts[2]
-            start = int(parts[3])
-            end = int(parts[4])
+            try:
+                start = int(parts[3])
+                end = int(parts[4])
+            except ValueError:
+                raise ValueError(
+                    f"Selected exons file does not appear to be a valid GTF format. "
+                    f"Invalid integer coordinate values ('{parts[3]}', '{parts[4]}') at line: '{line[:100]}...'"
+                )
             strand = parts[6] if len(parts) > 6 else '+'
             attributes = parts[8]
             
