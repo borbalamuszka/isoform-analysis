@@ -2275,7 +2275,7 @@ print("\\n=== Drive mapped successfully! ===")
             current_dir = os.getcwd()
         
         target_type = 'all'
-        if target_field in ["geom", "coexp", "interpro"]:
+        if target_field in ["geom", "coexp", "interpro", "tool-dist-outdir", "tool-coexp-outdir", "tool-interpro-outdir"]:
             target_type = 'dir'
             
         items, error = get_directory_contents(current_dir, target_type)
@@ -2380,14 +2380,14 @@ print("\\n=== Drive mapped successfully! ===")
         if target_type == "file-browser-item":
             is_dir = str(triggered_id.get("is_dir", "False")).lower() == "true"
             if is_dir:
-                is_dir_target = target_field in ["geom", "coexp", "interpro"]
+                is_dir_target = target_field in ["geom", "coexp", "interpro", "tool-dist-outdir", "tool-coexp-outdir", "tool-interpro-outdir"]
                 selected_val = clicked_path if is_dir_target else current_selected
                 return clicked_path, selected_val
             else:
                 return current_dir, clicked_path
                 
         elif target_type in ["breadcrumb-segment", "drive-jump-btn"]:
-            is_dir_target = target_field in ["geom", "coexp", "interpro"]
+            is_dir_target = target_field in ["geom", "coexp", "interpro", "tool-dist-outdir", "tool-coexp-outdir", "tool-interpro-outdir"]
             selected_val = clicked_path if is_dir_target else current_selected
             return clicked_path, selected_val
             
