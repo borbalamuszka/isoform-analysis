@@ -69,7 +69,7 @@ def read_matrix(path: str) -> pd.DataFrame:
 
     # Ensure remaining columns are numeric
     for c in df.columns:
-        if not np.issubdtype(df[c].dtype, np.number):
+        if not pd.api.types.is_numeric_dtype(df[c].dtype):
             # Try convert
             df[c] = pd.to_numeric(df[c], errors="coerce")
     return df

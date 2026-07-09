@@ -1,151 +1,34 @@
-Executing command: C:\Users\vilsn\Documents\isoform-analysis\isoform_dashboard_env\Scripts\python.exe -u -m utilities.precompute_coexpression --expression C:\Users\vilsn\Documents\isoform-analysis\data\expressed_isoforms_matrix.tsv --gtf C:\Users\vilsn\Documents\isoform-analysis\data\expressed_isoforms.gtf --outdir data/co-expression --threshold 0.3 --chunk-size 500 --method spearman
+Executing command: C:\Users\vilsn\Documents\isoform-analysis\isoform_dashboard_env\Scripts\python.exe -u C:\Users\vilsn\Documents\isoform-analysis\isoform_dashboard\assets\pipeline_runner.py
 
-Loading expression matrix from C:\Users\vilsn\Documents\isoform-analysis\data\expressed_isoforms_matrix.tsv...
-Loading GTF mapping from C:\Users\vilsn\Documents\isoform-analysis\data\expressed_isoforms.gtf...
-Found 49 sample columns and 61117 mapped transcripts.
-
---- Isoform-level Co-expression ---
-Ranking data for Spearman correlation...
-Computing correlation matrix in chunks...
-Progress: [  0%]                                                   [PROGRESS_PERCENT] 0
-Progress: [  0%]                                                   [PROGRESS_PERCENT] 0
-Progress: [  1%]                                                   [PROGRESS_PERCENT] 0
-Progress: [  2%] =                                                 [PROGRESS_PERCENT] 1
-Progress: [  3%] =                                                 [PROGRESS_PERCENT] 1
-Progress: [  4%] ==                                                [PROGRESS_PERCENT] 2
-Progress: [  4%] ==                                                [PROGRESS_PERCENT] 2
-Progress: [  5%] ==                                                [PROGRESS_PERCENT] 2
-Progress: [  6%] ===                                               [PROGRESS_PERCENT] 3
-Progress: [  7%] ===                                               [PROGRESS_PERCENT] 3
-Progress: [  8%] ====                                              [PROGRESS_PERCENT] 4
-Progress: [  8%] ====                                              [PROGRESS_PERCENT] 4
-Progress: [  9%] ====                                              [PROGRESS_PERCENT] 4
-Progress: [ 10%] =====                                             [PROGRESS_PERCENT] 5
-Progress: [ 11%] =====                                             [PROGRESS_PERCENT] 5
-Progress: [ 12%] ======                                            [PROGRESS_PERCENT] 6
-Progress: [ 13%] ======                                            [PROGRESS_PERCENT] 6
-Progress: [ 13%] ======                                            [PROGRESS_PERCENT] 6
-Progress: [ 14%] =======                                           [PROGRESS_PERCENT] 7
-Progress: [ 15%] =======                                           [PROGRESS_PERCENT] 7
-Progress: [ 16%] ========                                          [PROGRESS_PERCENT] 8
-Progress: [ 17%] ========                                          [PROGRESS_PERCENT] 8
-Progress: [ 17%] ========                                          [PROGRESS_PERCENT] 8
-Progress: [ 18%] =========                                         [PROGRESS_PERCENT] 9
-Progress: [ 19%] =========                                         [PROGRESS_PERCENT] 9
-Progress: [ 20%] ==========                                        [PROGRESS_PERCENT] 10
-Progress: [ 21%] ==========                                        [PROGRESS_PERCENT] 10
-Progress: [ 21%] ==========                                        [PROGRESS_PERCENT] 10
-Progress: [ 22%] ===========                                       [PROGRESS_PERCENT] 11
-Progress: [ 23%] ===========                                       [PROGRESS_PERCENT] 11
-Progress: [ 24%] ============                                      [PROGRESS_PERCENT] 12
-Progress: [ 25%] ============                                      [PROGRESS_PERCENT] 12
-Progress: [ 26%] =============                                     [PROGRESS_PERCENT] 13
-Progress: [ 26%] =============                                     [PROGRESS_PERCENT] 13
-Progress: [ 27%] =============                                     [PROGRESS_PERCENT] 13
-Progress: [ 28%] ==============                                    [PROGRESS_PERCENT] 14
-Progress: [ 29%] ==============                                    [PROGRESS_PERCENT] 14
-Progress: [ 30%] ===============                                   [PROGRESS_PERCENT] 15
-Progress: [ 30%] ===============                                   [PROGRESS_PERCENT] 15
-Progress: [ 31%] ===============                                   [PROGRESS_PERCENT] 15
-Progress: [ 32%] ================                                  [PROGRESS_PERCENT] 16
-Progress: [ 33%] ================                                  [PROGRESS_PERCENT] 16
-Progress: [ 34%] =================                                 [PROGRESS_PERCENT] 17
-Progress: [ 34%] =================                                 [PROGRESS_PERCENT] 17
-Progress: [ 35%] =================                                 [PROGRESS_PERCENT] 17
-Progress: [ 36%] ==================                                [PROGRESS_PERCENT] 18
-Progress: [ 37%] ==================                                [PROGRESS_PERCENT] 18
-Progress: [ 38%] ===================                               [PROGRESS_PERCENT] 19
-Progress: [ 39%] ===================                               [PROGRESS_PERCENT] 19
-Progress: [ 39%] ===================                               [PROGRESS_PERCENT] 19
-Progress: [ 40%] ====================                              [PROGRESS_PERCENT] 20
-Progress: [ 41%] ====================                              [PROGRESS_PERCENT] 20
-Progress: [ 42%] =====================                             [PROGRESS_PERCENT] 21
-Progress: [ 43%] =====================                             [PROGRESS_PERCENT] 21
-Progress: [ 43%] =====================                             [PROGRESS_PERCENT] 21
-Progress: [ 44%] ======================                            [PROGRESS_PERCENT] 22
-Progress: [ 45%] ======================                            [PROGRESS_PERCENT] 22
-Progress: [ 46%] =======================                           [PROGRESS_PERCENT] 23
-Progress: [ 47%] =======================                           [PROGRESS_PERCENT] 23
-Progress: [ 47%] =======================                           [PROGRESS_PERCENT] 23
-Progress: [ 48%] ========================                          [PROGRESS_PERCENT] 24
-Progress: [ 49%] ========================                          [PROGRESS_PERCENT] 24
-Progress: [ 50%] =========================                         [PROGRESS_PERCENT] 25
-Progress: [ 51%] =========================                         [PROGRESS_PERCENT] 25
-Progress: [ 52%] ==========================                        [PROGRESS_PERCENT] 26
-Progress: [ 52%] ==========================                        [PROGRESS_PERCENT] 26
-Progress: [ 53%] ==========================                        [PROGRESS_PERCENT] 26
-Progress: [ 54%] ===========================                       [PROGRESS_PERCENT] 27
-Progress: [ 55%] ===========================                       [PROGRESS_PERCENT] 27
-Progress: [ 56%] ============================                      [PROGRESS_PERCENT] 28
-Progress: [ 56%] ============================                      [PROGRESS_PERCENT] 28
-Progress: [ 57%] ============================                      [PROGRESS_PERCENT] 28
-Progress: [ 58%] =============================                     [PROGRESS_PERCENT] 29
-Progress: [ 59%] =============================                     [PROGRESS_PERCENT] 29
-Progress: [ 60%] ==============================                    [PROGRESS_PERCENT] 30
-Progress: [ 60%] ==============================                    [PROGRESS_PERCENT] 30
-Progress: [ 61%] ==============================                    [PROGRESS_PERCENT] 30
-Progress: [ 62%] ===============================                   [PROGRESS_PERCENT] 31
-Progress: [ 63%] ===============================                   [PROGRESS_PERCENT] 31
-Progress: [ 64%] ================================                  [PROGRESS_PERCENT] 32
-Progress: [ 65%] ================================                  [PROGRESS_PERCENT] 32
-Progress: [ 65%] ================================                  [PROGRESS_PERCENT] 32
-Progress: [ 66%] =================================                 [PROGRESS_PERCENT] 33
-Progress: [ 67%] =================================                 [PROGRESS_PERCENT] 33
-Progress: [ 68%] ==================================                [PROGRESS_PERCENT] 34
-Progress: [ 69%] ==================================                [PROGRESS_PERCENT] 34
-Progress: [ 69%] ==================================                [PROGRESS_PERCENT] 34
-Progress: [ 70%] ===================================               [PROGRESS_PERCENT] 35
-Progress: [ 71%] ===================================               [PROGRESS_PERCENT] 35
-Progress: [ 72%] ====================================              [PROGRESS_PERCENT] 36
-Progress: [ 73%] ====================================              [PROGRESS_PERCENT] 36
-Progress: [ 73%] ====================================              [PROGRESS_PERCENT] 36
-Progress: [ 74%] =====================================             [PROGRESS_PERCENT] 37
-Progress: [ 75%] =====================================             [PROGRESS_PERCENT] 37
-Progress: [ 76%] ======================================            [PROGRESS_PERCENT] 38
-Progress: [ 77%] ======================================            [PROGRESS_PERCENT] 38
-Progress: [ 78%] =======================================           [PROGRESS_PERCENT] 39
-Progress: [ 78%] =======================================           [PROGRESS_PERCENT] 39
-Progress: [ 79%] =======================================           [PROGRESS_PERCENT] 39
-Progress: [ 80%] ========================================          [PROGRESS_PERCENT] 40
-Progress: [ 81%] ========================================          [PROGRESS_PERCENT] 40
-Progress: [ 82%] =========================================         [PROGRESS_PERCENT] 41
-Progress: [ 82%] =========================================         [PROGRESS_PERCENT] 41
-Progress: [ 83%] =========================================         [PROGRESS_PERCENT] 41
-Progress: [ 84%] ==========================================        [PROGRESS_PERCENT] 42
-Progress: [ 85%] ==========================================        [PROGRESS_PERCENT] 42
-Progress: [ 86%] ===========================================       [PROGRESS_PERCENT] 43
-Progress: [ 86%] ===========================================       [PROGRESS_PERCENT] 43
-Progress: [ 87%] ===========================================       [PROGRESS_PERCENT] 43
-Progress: [ 88%] ============================================      [PROGRESS_PERCENT] 44
-Progress: [ 89%] ============================================      [PROGRESS_PERCENT] 44
-Progress: [ 90%] =============================================     [PROGRESS_PERCENT] 45
-Progress: [ 91%] =============================================     [PROGRESS_PERCENT] 45
-Progress: [ 91%] =============================================     [PROGRESS_PERCENT] 45
-Progress: [ 92%] ==============================================    [PROGRESS_PERCENT] 46
-Progress: [ 93%] ==============================================    [PROGRESS_PERCENT] 46
-Progress: [ 94%] ===============================================   [PROGRESS_PERCENT] 47
-Progress: [ 95%] ===============================================   [PROGRESS_PERCENT] 47
-Progress: [ 95%] ===============================================   [PROGRESS_PERCENT] 47
-Progress: [ 96%] ================================================  [PROGRESS_PERCENT] 48
-Progress: [ 97%] ================================================  [PROGRESS_PERCENT] 48
-Progress: [ 98%] ================================================= [PROGRESS_PERCENT] 49
-Progress: [ 99%] ================================================= [PROGRESS_PERCENT] 49
-Progress: [100%] ==================================================
-Creating and saving sparse matrix with 197602637 non-zero elements (this may take a few moments)...
-Saved isoform sparse matrix to data/co-expression\isoform_coexpression.npz
-
---- Gene-level Co-expression ---
-Aggregating isoform expression to gene level (sum)...
-Ranking data for Spearman correlation...
-Computing correlation matrix in chunks...
-Progress: [  0%]                                                   [PROGRESS_PERCENT] 50
-Progress: [ 33%] ================                                  [PROGRESS_PERCENT] 66
-Progress: [ 66%] =================================                 [PROGRESS_PERCENT] 83
-Progress: [100%] ==================================================
-Creating and saving sparse matrix with 188973 non-zero elements (this may take a few moments)...
-Saved gene sparse matrix to data/co-expression\gene_coexpression.npz
+=== Running Step 1/2: Calculate Distribution Tables ===
+Wrote data\isoform_distributions\distributions_individual_sum.tsv
+Wrote data\isoform_distributions\distributions_individual_mean.tsv
+[PROGRESS_PERCENT] 0
+Generating aggregated table with stat=sum...
+Wrote data\isoform_distributions\distributions_sum.tsv
+[PROGRESS_PERCENT] 50
+Generating aggregated table with stat=mean...
+Wrote data\isoform_distributions\distributions_mean.tsv
 [PROGRESS_PERCENT] 100
 
-Precomputation complete.
+=== Running Step 2/2: Calculate Bootstrap CIs ===
+<frozen runpy>:128: RuntimeWarning: 'isoform_distribution.bootstrap_isoform_means' found in sys.modules after import of package 'isoform_distribution', but prior to execution of 'isoform_distribution.bootstrap_isoform_means'; this may result in unpredictable behaviour
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 281, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 216, in main
+    df = read_matrix(args.input)
+  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 72, in read_matrix
+    if not np.issubdtype(df[c].dtype, np.number):
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_dashboard_env\Lib\site-packages\numpy\_core\numerictypes.py", line 534, in issubdtype
+    arg1 = dtype(arg1).type
+           ~~~~~^^^^^^
+TypeError: Cannot interpret '<StringDtype(storage='python', na_value=nan)>' as a data type
 
-[Process finished with exit code 0]
+Step 2 failed with exit code 1
+
+[Process finished with exit code 1]
