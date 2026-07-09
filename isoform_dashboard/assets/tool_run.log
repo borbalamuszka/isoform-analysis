@@ -12,23 +12,83 @@ Wrote data\isoform_distributions\distributions_mean.tsv
 [PROGRESS_PERCENT] 100
 
 === Running Step 2/2: Calculate Bootstrap CIs ===
-<frozen runpy>:128: RuntimeWarning: 'isoform_distribution.bootstrap_isoform_means' found in sys.modules after import of package 'isoform_distribution', but prior to execution of 'isoform_distribution.bootstrap_isoform_means'; this may result in unpredictable behaviour
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 281, in <module>
-    raise SystemExit(main())
-                     ~~~~^^
-  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 216, in main
-    df = read_matrix(args.input)
-  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_distribution\bootstrap_isoform_means.py", line 72, in read_matrix
-    if not np.issubdtype(df[c].dtype, np.number):
-           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\vilsn\Documents\isoform-analysis\isoform_dashboard_env\Lib\site-packages\numpy\_core\numerictypes.py", line 534, in issubdtype
-    arg1 = dtype(arg1).type
-           ~~~~~^^^^^^
-TypeError: Cannot interpret '<StringDtype(storage='python', na_value=nan)>' as a data type
+Computing bootstrapped CIs by brain region...
+[PROGRESS_PERCENT] 0
+[PROGRESS_PERCENT] 3
+[PROGRESS_PERCENT] 6
+[PROGRESS_PERCENT] 10
+[PROGRESS_PERCENT] 13
+[PROGRESS_PERCENT] 16
+[PROGRESS_PERCENT] 20
+[PROGRESS_PERCENT] 23
+[PROGRESS_PERCENT] 26
+[PROGRESS_PERCENT] 30
+[PROGRESS_PERCENT] 33
+[PROGRESS_PERCENT] 36
+[PROGRESS_PERCENT] 40
+[PROGRESS_PERCENT] 43
+[PROGRESS_PERCENT] 46
+[PROGRESS_PERCENT] 50
+[PROGRESS_PERCENT] 53
+[PROGRESS_PERCENT] 56
+[PROGRESS_PERCENT] 60
+[PROGRESS_PERCENT] 63
+[PROGRESS_PERCENT] 66
+[PROGRESS_PERCENT] 70
+[PROGRESS_PERCENT] 73
+[PROGRESS_PERCENT] 76
+[PROGRESS_PERCENT] 80
+[PROGRESS_PERCENT] 83
+[PROGRESS_PERCENT] 86
+[PROGRESS_PERCENT] 90
+[PROGRESS_PERCENT] 93
+[PROGRESS_PERCENT] 96
+Computing bootstrapped CIs by condition...
+[PROGRESS_PERCENT] 0
+[PROGRESS_PERCENT] 2
+[PROGRESS_PERCENT] 5
+[PROGRESS_PERCENT] 7
+[PROGRESS_PERCENT] 10
+[PROGRESS_PERCENT] 12
+[PROGRESS_PERCENT] 15
+[PROGRESS_PERCENT] 17
+[PROGRESS_PERCENT] 20
+[PROGRESS_PERCENT] 22
+[PROGRESS_PERCENT] 25
+[PROGRESS_PERCENT] 27
+[PROGRESS_PERCENT] 30
+[PROGRESS_PERCENT] 32
+[PROGRESS_PERCENT] 35
+[PROGRESS_PERCENT] 37
+[PROGRESS_PERCENT] 40
+[PROGRESS_PERCENT] 42
+[PROGRESS_PERCENT] 45
+[PROGRESS_PERCENT] 47
+[PROGRESS_PERCENT] 50
+[PROGRESS_PERCENT] 52
+[PROGRESS_PERCENT] 55
+[PROGRESS_PERCENT] 57
+[PROGRESS_PERCENT] 60
+[PROGRESS_PERCENT] 62
+[PROGRESS_PERCENT] 65
+[PROGRESS_PERCENT] 67
+[PROGRESS_PERCENT] 70
+[PROGRESS_PERCENT] 72
+[PROGRESS_PERCENT] 75
+[PROGRESS_PERCENT] 77
+[PROGRESS_PERCENT] 80
+[PROGRESS_PERCENT] 82
+[PROGRESS_PERCENT] 85
+[PROGRESS_PERCENT] 87
+[PROGRESS_PERCENT] 90
+[PROGRESS_PERCENT] 92
+[PROGRESS_PERCENT] 95
+[PROGRESS_PERCENT] 97
+Wrote confidence intervals to: data/isoform_distributions\confidence_intervals.tsv
+Included CIs for 3 regions: ['Caudate', 'DLPFC', 'Hippocampus']
+Included CIs for 4 conditions: ['Bipolar', 'Control', 'MDD', 'Schizo']
+[PROGRESS_PERCENT] 100
 
-Step 2 failed with exit code 1
+=== Preprocessing Completed Successfully! ===
 
-[Process finished with exit code 1]
+[Process finished with exit code 0]
