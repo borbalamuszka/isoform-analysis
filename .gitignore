@@ -5,3 +5,9 @@ James/
 data/
 isoform_dashboard/data/
 *.code-workspace
+
+# Local environment & runner files containing user-specific paths
+isoform_dashboard_env/
+isoform_dashboard/assets/pipeline_runner.py
+isoform_dashboard/assets/tool_run.log
+test_sparse_save.py
