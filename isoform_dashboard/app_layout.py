@@ -961,7 +961,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         # Title and header row with settings button
         html.Div([
             html.Div([
-                html.H3("Isoform Entropy Dashboard", style={**global_style, "margin": "0 0 10px 0", "display": "inline-block"}),
+                html.H3("Isoform Dashboard", style={**global_style, "margin": "0 0 10px 0", "display": "inline-block"}),
                 html.Button(
                     "⚙ Configure Data Sources",
                     id="btn-open-settings",

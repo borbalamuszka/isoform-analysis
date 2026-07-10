@@ -36,6 +36,19 @@
 
 4. **Run the dashboard** (from the repo root)
 
+   Choose one of two options to launch and configure the dashboard:
+
+   ### Option A: Start empty & load data using the UI (Recommended)
+   Run the dashboard without any arguments:
+   ```bash
+   python -m isoform_dashboard.dashboard_app
+   ```
+   Then open `http://127.0.0.1:8050` in your web browser. A welcome screen will automatically prompt you to select your data files using a built-in visual file browser. Once selected, click **Apply Changes & Reload** to load the dataset dynamically.
+   
+   > **Dynamic Switching:** You can open the **Configure Data Sources** dialog at any time during execution to load a completely new or updated dataset dynamically. The application state will reload and refresh the visuals cleanly.
+
+   ### Option B: Run with command-line arguments (Classic)
+   Specify all input files as command-line arguments:
    ```bash
    python -m isoform_dashboard.dashboard_app \
      --input-mean   data/project/output/isoform_distributions/distributions_mean.tsv \
@@ -44,11 +57,11 @@
      --exons        data/project/expressed_isoforms.gtf \
      --proteins     data/project/proteins.fasta \
      --geometry-dir data/project/output/alphafold_geometry \
-     --interpro-dir data/project/output/interpro_results
+     --interpro-dir data/project/output/interpro_results \
+     --gene-coexpression-dir data/project/output/coexpression
    ```
 
    Windows PowerShell (line continuation with backticks):
-
    ```powershell
    python -m isoform_dashboard.dashboard_app `
      --input-mean   data/project/output/isoform_distributions/distributions_mean.tsv `
@@ -57,7 +70,8 @@
      --exons        data/project/expressed_isoforms.gtf `
      --proteins     data/project/proteins.fasta `
      --geometry-dir data/project/output/alphafold_geometry `
-     --interpro-dir data/project/output/interpro_results
+     --interpro-dir data/project/output/interpro_results `
+     --gene-coexpression-dir data/project/output/coexpression
    ```
 
    For Windows cmd.exe, replace the backticks with carets (`^`) or paste the command on one line.
@@ -183,11 +197,13 @@ python -m isoform_distribution.distributions \
   - Exon structure: color‑coded exons (orange CDS, blue UTR) from GTF; clickable InterPro domains.
   - Support for AlphaFold 3D geometry visualization.
   - Exon-level highlighting in the 3D viewer and protein sequence display.
+  - **Web-Based Preprocessing Suite**: Launch distribution calculations, bootstrap CI calculations, co-expression matrix construction (Pearson/Spearman), InterPro scan API queries, and network drive mapping directly from the UI with real-time log streaming and progress bars.
 - **Inputs**
-  - `--input-mean`: TSV with mean values.
+  - `--input-mean`: TSV with mean values (**required**).
   - `--input-sum`: TSV with sum values (optional).
+  - `--gene-coexpression-dir`: Precomputed co-expression directory containing sparse matrices (optional).
   - `--ci-file`: bootstrap CI TSV (optional).
-  - `--exons`: GTF file with exon/CDS annotations (optional).
+  - `--exons`: GTF file with exon/CDS annotations (optional). If omitted, exon visualizations and 3D mapping features are disabled, and the co-expression compound nodes fallback to grouping isoforms by gene using the expression matrix.
   - `--proteins`: protein FASTA file (optional).
   - `--geometry-dir`: AlphaFold geometry output directory (optional).
   - `--interpro-dir`: InterPro results directory (optional).

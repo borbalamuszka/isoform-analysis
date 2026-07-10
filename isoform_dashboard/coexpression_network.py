@@ -147,7 +147,7 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
             continue
         if isoform_coexpression is None or isoform_coexpression_idx is None:
             continue
-        if not isoforms_by_gene:
+        if not isoforms_by_gene and df_expression is None:
             continue
 
         # Build isoform lookup
@@ -162,7 +162,11 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
                 iso_to_idx[iso.split('.')[0]] = i
 
         # Start with all isoforms in the GTF for this gene
-        gtf_isoforms = list(isoforms_by_gene.get(gene, {}).keys())
+        if isoforms_by_gene:
+            gtf_isoforms = list(isoforms_by_gene.get(gene, {}).keys())
+        else:
+            # Fallback to expression mapping if GTF exons file is omitted
+            gtf_isoforms = df_expression[df_expression['gene_id'] == gene]['transcript_id'].tolist()
 
         # FIX 2 – filter & rank by expression to match the exon-panel cap.
         # The exon panel uses nlargest(max_display, global_col) from the active
