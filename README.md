@@ -45,7 +45,7 @@
    ```
    Then open `http://127.0.0.1:8050` in your web browser. A welcome screen will automatically prompt you to select your data files using a built-in visual file browser. Once selected, click **Apply Changes & Reload** to load the dataset dynamically.
    
-   > **Dynamic Switching:** You can open the **Configure Data Sources** dialog at any time during execution to load a completely new or updated dataset dynamically. The application state will reload and refresh the visuals cleanly.
+   > **Dynamic Switching:** You can open the **Configure Data Sources** dialog at any time during execution to load a completely new or updated dataset dynamically. The application state will reload and refresh the visuals.
 
    ### Option B: Run with command-line arguments (Classic)
    Specify all input files as command-line arguments:
@@ -114,7 +114,7 @@
 
 ### Isoform distributions: `isoform_distribution/distributions.py`
 
-Generates isoform distribution tables (one row per retained transcript).
+Generates isoform distribution tables (one row per retained transcript). ALternatively use the tool in the dashboard.
 
 - **Features**
   - Filters low‑contribution isoforms by percentage cutoff.
@@ -275,7 +275,7 @@ python -m utilities.extract_3d_geometry \
   - Compute mean expression per isoform.
 - For each isoform:
   - Sort its bootstrap means.
-  - Drop the lowest and highest 2.5% (for N=1000, drop 25 values at each tail) → 95% CI.
+  - Determine the 2.5th and 97.5th percentiles of the sorted bootstrap means (e.g., indices 25 and 974 for N=1000) to serve as the 95% CI bounds.
 - Generates global CIs plus optional group-specific CIs (if grouping metadata is provided).
 - CIs are used as error bars on isoform distribution plots (mean dataset).
 
