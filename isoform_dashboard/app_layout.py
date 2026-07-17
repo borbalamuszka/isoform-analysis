@@ -963,6 +963,12 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
             html.Div([
                 html.H3("Isoform Dashboard", style={**global_style, "margin": "0 0 10px 0", "display": "inline-block"}),
                 html.Button(
+                    "🔄 Reset",
+                    id="btn-reset-app",
+                    n_clicks=0,
+                    className="btn-reset"
+                ),
+                html.Button(
                     "⚙ Configure Data Sources",
                     id="btn-open-settings",
                     n_clicks=0,
@@ -3795,4 +3801,146 @@ print("\\n=== Drive mapped successfully! ===")
                 'z-index': 10,
             }
         }
-        return base_style + [highlight_rule], preset_layout
+        return base_style + [highlight_rule], preset_layout
+
+    @app.callback(
+        [
+            Output("input-path-mean", "value", allow_duplicate=True),
+            Output("input-path-sum", "value", allow_duplicate=True),
+            Output("input-path-gtf", "value", allow_duplicate=True),
+            Output("input-path-geom", "value", allow_duplicate=True),
+            Output("input-path-coexp", "value", allow_duplicate=True),
+            Output("input-path-fasta", "value", allow_duplicate=True),
+            Output("input-path-interpro", "value", allow_duplicate=True),
+            Output("input-path-ci", "value", allow_duplicate=True),
+            Output("selected-gene", "data", allow_duplicate=True),
+            Output("selected-transcript", "data", allow_duplicate=True),
+            Output("selected-exon", "data", allow_duplicate=True),
+            Output("expanded-network-genes", "data", allow_duplicate=True),
+            Output("expanded-gene-position", "data", allow_duplicate=True),
+            Output("selected-domain", "data", allow_duplicate=True),
+            Output("welcome-banner", "style", allow_duplicate=True),
+            Output("main-dashboard-content", "style", allow_duplicate=True),
+            Output("coexpression-network-container", "style", allow_duplicate=True),
+            Output("dataset-toggle", "options", allow_duplicate=True),
+            Output("dataset-toggle", "value", allow_duplicate=True),
+            Output("data-sources-updated", "data", allow_duplicate=True),
+            Output("progress-container", "style", allow_duplicate=True),
+            Output("progress-status-msg", "children", allow_duplicate=True),
+            Output("progress-bar-fill", "style", allow_duplicate=True),
+            Output("settings-feedback", "children", allow_duplicate=True),
+            Output("settings-feedback", "style", allow_duplicate=True),
+        ],
+        [Input("btn-reset-app", "n_clicks")],
+        [State("data-sources-updated", "data")],
+        prevent_initial_call=True
+    )
+    def reset_application(n_clicks, current_updated):
+        if not n_clicks:
+            raise PreventUpdate
+
+        # Clear state dict variables
+        state['df_mean'] = None
+        state['df_sum'] = None
+        state['results_df_mean'] = pd.DataFrame()
+        state['results_df_sum'] = pd.DataFrame()
+        state['sample_cols'] = []
+        state['global_col_mean'] = ""
+        state['global_col_sum'] = ""
+        state['has_sum'] = False
+        state['isoforms_by_gene'] = {}
+        state['gene_names'] = {}
+        state['af_geometry_mapping'] = {}
+        state['domain_mapping'] = {}
+        state['protein_sequences'] = {}
+        state['gene_coexpression'] = None
+        state['gene_coexpression_idx'] = None
+        state['isoform_coexpression'] = None
+        state['isoform_coexpression_idx'] = None
+        
+        # Derived tables
+        state['table_df_mean'] = None
+        state['table_df_sum'] = None
+        state['table_mean_records'] = []
+        state['table_sum_records'] = []
+        state['transcript_to_exons'] = {}
+        state['genes_with_cds'] = set()
+        state['genes_with_3d'] = set()
+        state['genes_with_domains'] = set()
+        
+        # Paths
+        state['path_mean'] = ""
+        state['path_sum'] = ""
+        state['path_gtf'] = ""
+        state['path_geom'] = ""
+        state['path_coexp'] = ""
+        state['path_fasta'] = ""
+        state['path_interpro'] = ""
+        state['path_ci'] = ""
+        state['ci_df'] = None
+        state['ci_columns'] = []
+        state['ci_dict'] = {}
+
+        # Mtimes
+        state['mtime_mean'] = None
+        state['mtime_sum'] = None
+        state['mtime_gtf'] = None
+        state['mtime_geom'] = None
+        state['mtime_coexp'] = None
+        state['mtime_fasta'] = None
+        state['mtime_interpro'] = None
+        state['mtime_ci'] = None
+        
+        # Scatter ranges
+        state['scatter_axis_ranges'] = {'mean': (None, None), 'sum': (None, None)}
+        
+        # Loading progress state
+        state['loading_progress'] = {'step': 0, 'total': 7, 'msg': '', 'done': False, 'error': None, 'updated_time': 0}
+        
+        # Clear caches
+        _base_scatter.cache_clear()
+        _base_exon_fig.cache_clear()
+
+        # Recompute derived state
+        state['recompute_derived_state']()
+
+        new_updated_time = (current_updated or 0) + 1
+
+        welcome_banner_style = {
+            "display": "block",
+            "backgroundColor": "#ebf5fb",
+            "borderLeft": "6px solid #3498db",
+            "padding": "16px 20px",
+            "borderRadius": "4px",
+            "marginBottom": "20px",
+            "fontFamily": "Segoe UI, Tahoma, Geneva, Verdana, sans-serif"
+        }
+        main_content_style = {"display": "none", "width": "100%", "marginBottom": "20px"}
+        coexp_style = {"display": "none"}
+        toggle_options = [
+            {'label': ' Mean', 'value': 'mean'},
+            {'label': ' Sum', 'value': 'sum', 'disabled': True}
+        ]
+        
+        # Clear progress status msg/bar and feedback
+        progress_container_style = {"display": "none"}
+        progress_status_msg = ""
+        progress_bar_style = {"width": "0%"}
+        feedback_msg = ""
+        feedback_style = {"display": "none"}
+
+        return (
+            "", "", "", "", "", "", "", "",  # path inputs
+            None, None, None, [], None, None, # stores
+            welcome_banner_style,
+            main_content_style,
+            coexp_style,
+            toggle_options,
+            "mean",
+            new_updated_time,
+            progress_container_style,
+            progress_status_msg,
+            progress_bar_style,
+            feedback_msg,
+            feedback_style
+        )
