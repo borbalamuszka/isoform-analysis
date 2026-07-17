@@ -2383,8 +2383,10 @@ print("\\n=== Drive mapped successfully! ===")
         target_type = triggered_id.get("type")
         clicked_path = triggered_id.get("index")
         
+        log.info(f"navigate_filesystem: triggered_id={triggered_id}, target_field={target_field}, current_dir={current_dir}, clicked_path={clicked_path}")
+        
         if target_type == "file-browser-item":
-            is_dir = str(triggered_id.get("is_dir", "False")).lower() == "true"
+            is_dir = os.path.isdir(clicked_path)
             if is_dir:
                 is_dir_target = target_field in ["geom", "coexp", "interpro", "tool-dist-outdir", "tool-coexp-outdir", "tool-interpro-outdir"]
                 selected_val = clicked_path if is_dir_target else current_selected
