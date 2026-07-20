@@ -418,7 +418,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     
                     # Field 1: Mean Expression (TSV)
                     html.Div([
-                        html.Label("Mean Expression TSV File (Required for visualization)", className="settings-label"),
+                        html.Label(["Mean Expression TSV File (Required for visualization) ", html.Span("ℹ️", title="A tab-separated table containing mean expression values per isoform across conditions. First column must be 'transcript_id'.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-mean", value=state['path_mean'], placeholder="e.g. Z:\\distributions_condition_mean.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-mean", n_clicks=0, className="btn-browse")
@@ -427,7 +427,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 2: Sum Expression (TSV)
                     html.Div([
-                        html.Label("Sum Expression TSV File (Optional)", className="settings-label"),
+                        html.Label(["Sum Expression TSV File (Optional) ", html.Span("ℹ️", title="A tab-separated table containing summed expression values per isoform across samples.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-sum", value=state['path_sum'], placeholder="e.g. Z:\\distributions_condition_sum.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-sum", n_clicks=0, className="btn-browse")
@@ -436,7 +436,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 3: Exons GTF
                     html.Div([
-                        html.Label("Exons GTF File (Optional, required for structure visualization)", className="settings-label"),
+                        html.Label(["Exons GTF File (Optional, required for structure visualization) ", html.Span("ℹ️", title="A genomic annotation file in standard GTF format containing exon and CDS coordinates.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-gtf", value=state['path_gtf'], placeholder="e.g. Z:\\expressed_isoforms.gtf", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-gtf", n_clicks=0, className="btn-browse")
@@ -445,7 +445,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 4: AlphaFold Geometry Directory
                     html.Div([
-                        html.Label("AlphaFold Geometry Directory (Optional, required for 3D structures)", className="settings-label"),
+                        html.Label(["AlphaFold Geometry Directory (Optional, required for 3D structures) ", html.Span("ℹ️", title="Directory containing residue geometry mappings (.json files) and interactive 3D HTML models.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-geom", value=state['path_geom'], placeholder="e.g. Z:\\alphafold_geometry", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-geom", n_clicks=0, className="btn-browse")
@@ -454,7 +454,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 5: Co-expression Directory
                     html.Div([
-                        html.Label("Co-expression Matrices Directory (Optional, containing gene_coexpression.npz, etc.)", className="settings-label"),
+                        html.Label(["Co-expression Matrices Directory (Optional, containing gene_coexpression.npz, etc.) ", html.Span("ℹ️", title="Directory containing precomputed sparse matrices (.npz) and lookup files (.pkl) for network co-expression.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-coexp", value=state['path_coexp'], placeholder="e.g. Z:\\gene_coexpression_dir", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-coexp", n_clicks=0, className="btn-browse")
@@ -463,7 +463,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 6: Protein FASTA
                     html.Div([
-                        html.Label("Protein Sequences FASTA (Optional)", className="settings-label"),
+                        html.Label(["Protein Sequences FASTA (Optional) ", html.Span("ℹ️", title="A peptide sequences FASTA file used to display translated protein sequences in the dashboard.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-fasta", value=state['path_fasta'], placeholder="e.g. Z:\\proteins.fasta", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-fasta", n_clicks=0, className="btn-browse")
@@ -472,7 +472,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 7: InterPro Results Directory (Optional)
                     html.Div([
-                        html.Label("InterPro Results Directory (Optional)", className="settings-label"),
+                        html.Label(["InterPro Results Directory (Optional) ", html.Span("ℹ️", title="Directory containing EBI InterPro scan domain predictions (.json files) named by transcript ID.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-interpro", value=state['path_interpro'], placeholder="e.g. Z:\\interpro_dir", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-interpro", n_clicks=0, className="btn-browse")
@@ -481,7 +481,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 8: Confidence Intervals File
                     html.Div([
-                        html.Label("Bootstrap Confidence Intervals TSV File (Optional)", className="settings-label"),
+                        html.Label(["Bootstrap Confidence Intervals TSV File (Optional) ", html.Span("ℹ️", title="Table of precomputed bootstrap confidence interval limits (ci_lower, ci_upper) used to draw error bars.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-ci", value=state['path_ci'], placeholder="e.g. Z:\\confidence_intervals.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-ci", n_clicks=0, className="btn-browse")
@@ -607,44 +607,44 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         style={"display": "block"},
                         children=[
                             html.Div([
-                                html.Label("Raw Expression Matrix (TSV/CSV)", className="settings-label"),
+                                html.Label(["Raw Expression Matrix (TSV/CSV) ", html.Span("ℹ️", title="Raw count or CPM expression matrix (transcripts as rows, samples as columns).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-dist-matrix", placeholder="e.g. Z:\\expressed_isoforms_matrix.txt", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-dist-matrix", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Exons GTF File", className="settings-label"),
+                                html.Label(["Exons GTF File ", html.Span("ℹ️", title="Standard annotation file used for transcript-to-gene mapping.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-dist-gtf", placeholder="e.g. Z:\\expressed_isoforms.gtf", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-dist-gtf", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Metadata File (CSV/TSV)", className="settings-label"),
+                                html.Label(["Metadata File (CSV/TSV) ", html.Span("ℹ️", title="Metadata table mapping sample IDs to experimental groups (conditions, tissues, cell types).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-dist-meta", placeholder="e.g. Z:\\sample_metadata.txt", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-dist-meta", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Output Directory", className="settings-label"),
+                                html.Label(["Output Directory ", html.Span("ℹ️", title="Output folder where the generated mean/sum and CI tables will be saved.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-dist-outdir", placeholder="e.g. Z:\\data\\isoform_distributions", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-dist-outdir", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Metadata Sample ID Column", className="settings-label"),
+                                html.Label(["Metadata Sample ID Column ", html.Span("ℹ️", title="Name of the column containing sample identifiers matching the expression matrix columns.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-dist-meta-sample", value="sample_id", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Metadata Grouping Column", className="settings-label"),
+                                html.Label(["Metadata Grouping Column ", html.Span("ℹ️", title="Name of the column containing experimental group labels (e.g. cell_type, region) to aggregate by.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-dist-meta-group", value="region", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
                                 html.Div([
-                                    html.Label("Filtering Percentage Cutoff", className="settings-label"),
+                                    html.Label(["Filtering Percentage Cutoff ", html.Span("ℹ️", title="Minimum percent contribution of an isoform's expression to its gene's total expression to be retained.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                     dcc.Input(id="tool-dist-cutoff", type="number", value=1.5, step=0.1, className="settings-input")
                                 ], style={"width": "48%", "display": "inline-block"}),
                                 html.Div([
@@ -664,15 +664,15 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                 children=[
                                     html.Div([
                                         html.Div([
-                                            html.Label("Bootstrap Iterations", className="settings-label"),
+                                            html.Label(["Bootstrap Iterations ", html.Span("ℹ️", title="Number of bootstrap resampling loops (e.g. 1000 for publication quality, 50 for testing).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                             dcc.Input(id="tool-dist-bootstrap-iter", type="number", value=1000, step=100, className="settings-input")
                                         ], style={"width": "31%", "display": "inline-block"}),
                                         html.Div([
-                                            html.Label("Bootstrap Include Key", className="settings-label"),
+                                            html.Label(["Bootstrap Include Key ", html.Span("ℹ️", title="Keyword filter (case-insensitive) to subset sample columns before bootstrapping (e.g. 'adult' or 'control').", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                             dcc.Input(id="tool-dist-bootstrap-key", value="adult", className="settings-input")
                                         ], style={"width": "31%", "display": "inline-block", "marginLeft": "3%"}),
                                         html.Div([
-                                            html.Label("Random Seed", className="settings-label"),
+                                            html.Label(["Random Seed ", html.Span("ℹ️", title="Random seed value for reproducible bootstrap column resampling.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                             dcc.Input(id="tool-dist-bootstrap-seed", type="number", value=42, className="settings-input")
                                         ], style={"width": "31%", "display": "inline-block", "float": "right"})
                                     ], className="settings-row")
@@ -687,28 +687,28 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         style={"display": "none"},
                         children=[
                             html.Div([
-                                html.Label("Raw Expression Matrix (TSV/CSV)", className="settings-label"),
+                                html.Label(["Raw Expression Matrix (TSV/CSV) ", html.Span("ℹ️", title="The raw isoform expression matrix containing sample columns.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-coexp-expression", placeholder="e.g. Z:\\expressed_isoforms_matrix.tsv", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-coexp-expr", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Exons GTF File", className="settings-label"),
+                                html.Label(["Exons GTF File ", html.Span("ℹ️", title="GTF file to map transcripts to genes for generating gene-level and isoform-level networks.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-coexp-gtf", placeholder="e.g. Z:\\expressed_isoforms.gtf", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-coexp-gtf", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Output Directory", className="settings-label"),
+                                html.Label(["Output Directory ", html.Span("ℹ️", title="Target folder to save coexpression sparse matrices (.npz) and index files (.pkl).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-coexp-outdir", placeholder="e.g. Z:\\data\\co-expression", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-coexp-outdir", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Correlation Method", className="settings-label"),
+                                html.Label(["Correlation Method ", html.Span("ℹ️", title="Spearman (rank correlation, robust to outliers, default) or Pearson (linear correlation).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Dropdown(
                                     id="tool-coexp-method",
                                     options=[
@@ -723,12 +723,12 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                             ], className="settings-row"),
                             html.Div([
                                 html.Div([
-                                    html.Label("Correlation Threshold", className="settings-label"),
+                                    html.Label(["Correlation Threshold ", html.Span("ℹ️", title="Minimum absolute correlation coefficient (|r|) to retain co-expression edges (e.g. 0.3). Lower values increase memory usage.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                     dcc.Input(id="tool-coexp-threshold", type="number", value=0.3, step=0.01, className="settings-input"),
                                     html.Small("Note: Values < 0.2 can cause extremely high memory usage.", style={"color": "#7f8c8d", "fontSize": "11px", "display": "block", "marginTop": "4px"})
                                 ], style={"width": "48%", "display": "inline-block", "verticalAlign": "top"}),
                                 html.Div([
-                                    html.Label("Chunk Size", className="settings-label"),
+                                    html.Label(["Chunk Size ", html.Span("ℹ️", title="Number of variables processed per calculation block to optimize memory footprint.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                     dcc.Input(id="tool-coexp-chunk", type="number", value=250, step=50, className="settings-input")
                                 ], style={"width": "48%", "display": "inline-block", "float": "right", "verticalAlign": "top"})
                             ], className="settings-row", style={"marginBottom": "20px"})
@@ -741,28 +741,28 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         style={"display": "none"},
                         children=[
                             html.Div([
-                                html.Label("FASTA Sequences File", className="settings-label"),
+                                html.Label(["FASTA Sequences File ", html.Span("ℹ️", title="Peptide sequences FASTA file containing translated transcript sequences.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-interpro-fasta", placeholder="e.g. Z:\\proteins.fasta", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-interpro-fasta", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Exons GTF File (Optional, for filtering)", className="settings-label"),
+                                html.Label(["Exons GTF File (Optional, for filtering) ", html.Span("ℹ️", title="Optional GTF file to filter sequences by matching exon structures.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-interpro-gtf", placeholder="e.g. Z:\\expressed_isoforms.gtf", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-interpro-gtf", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Output Directory", className="settings-label"),
+                                html.Label(["Output Directory ", html.Span("ℹ️", title="Folder where InterPro result JSON files will be written.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 html.Div([
                                     dcc.Input(id="tool-interpro-outdir", placeholder="e.g. Z:\\data\\interpro_results", className="settings-input"),
                                     html.Button("Browse...", id="btn-browse-tool-interpro-outdir", n_clicks=0, className="btn-browse")
                                 ], className="settings-input-container")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Contact Email (required for EBI services API limit tracking)", className="settings-label"),
+                                html.Label(["Contact Email (required for EBI services API limit tracking) ", html.Span("ℹ️", title="Your email address to identify REST API client calls to the EBI InterPro scan server.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-interpro-email", value="bm708@cam.ac.uk", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
@@ -782,19 +782,19 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         style={"display": "none"},
                         children=[
                             html.Div([
-                                html.Label("Remote Share Path (e.g. \\\\192.168.1.15\\IsoformData)", className="settings-label"),
+                                html.Label(["Remote Share Path (e.g. \\\\192.168.1.15\\IsoformData) ", html.Span("ℹ️", title="UNC remote Windows directory path to map to a local letter.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-map-share", placeholder="e.g. \\\\192.168.1.15\\IsoformData", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Drive Letter to Map (e.g. Z:)", className="settings-label"),
+                                html.Label(["Drive Letter to Map (e.g. Z:) ", html.Span("ℹ️", title="Local letter mount target (e.g. Z:).", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-map-letter", value="Z:", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Username (Optional)", className="settings-label"),
+                                html.Label(["Username (Optional) ", html.Span("ℹ️", title="Username required to connect to the remote network share.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-map-user", placeholder="Windows username on the client machine", className="settings-input")
                             ], className="settings-row"),
                             html.Div([
-                                html.Label("Password (Optional)", className="settings-label"),
+                                html.Label(["Password (Optional) ", html.Span("ℹ️", title="Password required to connect to the remote network share.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                                 dcc.Input(id="tool-map-pass", type="password", placeholder="Windows password on the client machine", className="settings-input")
                             ], className="settings-row")
                         ]
