@@ -183,6 +183,13 @@ def main():
         pickle.dump(gene_ids, f)
     print(f"Saved gene sparse matrix to {gene_out_mat}")
     
+    # Save gene-to-isoform pairing lookup table
+    gene_iso_out = os.path.join(args.outdir, "gene_iso_mapping.pkl")
+    gene_to_isoforms = df.groupby('gene_id')['transcript_id'].apply(list).to_dict()
+    with open(gene_iso_out, 'wb') as f:
+        pickle.dump(gene_to_isoforms, f)
+    print(f"Saved gene-isoform mapping table to {gene_iso_out}")
+    
     print("[PROGRESS_PERCENT] 100", flush=True)
     print("\nPrecomputation complete.")
 

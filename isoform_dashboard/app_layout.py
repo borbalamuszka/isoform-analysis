@@ -121,6 +121,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                gene_coexpression_idx=None,
                isoform_coexpression=None,
                isoform_coexpression_idx=None,
+               gene_iso_mapping=None,
                path_mean=None,
                path_sum=None,
                path_gtf=None,
@@ -245,6 +246,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         'gene_coexpression_idx': gene_coexpression_idx,
         'isoform_coexpression': isoform_coexpression,
         'isoform_coexpression_idx': isoform_coexpression_idx,
+        'gene_iso_mapping': gene_iso_mapping or {},
         
         # Derived tables
         'table_df_mean': None,
@@ -273,10 +275,61 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         'scatter_axis_ranges': {'mean': (None, None), 'sum': (None, None)},
         
         # Loading progress state
-        'loading_progress': {'step': 0, 'total': 7, 'msg': '', 'done': False, 'error': None, 'updated_time': 0}
+        'loading_progress': {'step': 0, 'total': 7, 'msg': '', 'done': False, 'error': None, 'updated_time': 0},
+        'mapping_warning': "",
     }
 
     def recompute_derived_state():
+        # Check for inconsistencies between isoforms_by_gene (GTF) and gene_iso_mapping (coexpression)
+        state['mapping_warning'] = ""
+        if state.get('isoforms_by_gene') and state.get('gene_iso_mapping'):
+            mismatched_genes = []
+            for gene_id, gtf_txs in state['isoforms_by_gene'].items():
+                coexp_txs = state['gene_iso_mapping'].get(gene_id)
+                if coexp_txs is not None:
+                    gtf_set = set(gtf_txs.keys())
+                    coexp_set = set(coexp_txs)
+                    if gtf_set != coexp_set:
+                        mismatched_genes.append(gene_id)
+            if mismatched_genes:
+                warn_msg = f"Discrepancies detected between GTF and Co-expression mappings for {len(mismatched_genes)} genes (e.g. {', '.join(mismatched_genes[:3])}). Defaulting to GTF mappings."
+                state['mapping_warning'] = warn_msg
+                log.warning("recompute_derived_state: " + warn_msg)
+
+        # Check for isoforms that are present in expression/co-expression but missing parent gene mapping in GTF
+        missing_in_gtf = {}
+        df_expr = state.get('df_mean') if state.get('df_mean') is not None else state.get('df_sum')
+        if df_expr is not None and not df_expr.empty:
+            for idx, row in df_expr.iterrows():
+                tx_id = row.get('transcript_id')
+                g_id = row.get('gene_id')
+                if pd.notna(tx_id) and pd.notna(g_id):
+                    missing_in_gtf[tx_id] = g_id
+
+        if state.get('gene_iso_mapping'):
+            for g_id, tx_list in state['gene_iso_mapping'].items():
+                for tx_id in tx_list:
+                    missing_in_gtf[tx_id] = g_id
+
+        if state.get('isoforms_by_gene') is not None:
+            gtf_was_supplied = len(state['isoforms_by_gene']) > 0
+            gtf_mapped_transcripts = {tx for txs in state['isoforms_by_gene'].values() for tx in txs.keys()}
+            unmapped_isoforms = {tx: g for tx, g in missing_in_gtf.items() if tx not in gtf_mapped_transcripts}
+
+            if unmapped_isoforms:
+                for tx_id, g_id in unmapped_isoforms.items():
+                    if g_id not in state['isoforms_by_gene']:
+                        state['isoforms_by_gene'][g_id] = {}
+                    state['isoforms_by_gene'][g_id][tx_id] = []
+
+                if gtf_was_supplied:
+                    warn_msg = f"{len(unmapped_isoforms)} transcripts are missing parent gene mapping in GTF. Defaulted their mapping to expression/co-expression data (e.g. {', '.join(list(unmapped_isoforms.keys())[:3])})."
+                    if state.get('mapping_warning'):
+                        state['mapping_warning'] += " " + warn_msg
+                    else:
+                        state['mapping_warning'] = warn_msg
+                    log.warning("recompute_derived_state: " + warn_msg)
+
         state['genes_with_cds'] = set()
         if state['isoforms_by_gene']:
             state['genes_with_cds'] = {
@@ -308,6 +361,13 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     state['transcript_to_exons'][_tid] = sorted(_exons, key=lambda e: e["exon_start"])
 
         state['ci_dict'] = state['ci_df'].to_dict('index') if state['ci_df'] is not None else {}
+
+        # If mean is missing but sum is present, copy sum to mean for initial display
+        if (state.get('results_df_mean') is None or state['results_df_mean'].empty) and \
+           (state.get('results_df_sum') is not None and not state['results_df_sum'].empty):
+            state['results_df_mean'] = state['results_df_sum']
+            state['df_mean'] = state['df_sum']
+            state['global_col_mean'] = state['global_col_sum']
 
         # Check if we have no expression results, but we do have GTF or Co-expression directory loaded
         if (state.get('results_df_mean') is None or state['results_df_mean'].empty) and \
@@ -1108,6 +1168,14 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                             
                                             html.H5("🕸 Precomputed Co-expression Directory [Required for network widget]", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
                                             html.P("A folder containing precomputed correlation matrices (gene_coexpression.npz, isoform_coexpression.npz) and index mappings (gene_index.pkl, isoform_index.pkl) generated by the co-expression script. Required to display the Cytoscape co-expression network."),
+                                            html.P([
+                                                 html.Strong("Note on Isoform expansion: "),
+                                                 "To expand a gene node into its isoform-to-isoform correlation network, the app requires either the ",
+                                                 html.Strong("Exons GTF"),
+                                                 " file or an ",
+                                                 html.Strong("Expression matrix"),
+                                                 " to map which transcript IDs belong to which gene. If you load the co-expression directory completely alone, you can visualize gene-to-gene network correlations, but you will not be able to expand genes to view underlying isoform correlations."
+                                             ], style={"fontSize": "12px", "color": "#7f8c8d", "marginTop": "4px", "backgroundColor": "#fafafa", "padding": "8px", "borderRadius": "4px", "borderLeft": "3px solid #bdc3c7"}),
                                             
                                             # Subsection: Secondary/Optional Enhancements
                                             html.H5("💡 Secondary Enhancements (Optional)", style={"color": "#2c3e50", "borderBottom": "2px solid #2ecc71", "paddingBottom": "4px", "marginTop": "20px"}),
@@ -1848,12 +1916,14 @@ def _register_callbacks(app, state):
                 gene_coexpression_idx = state['gene_coexpression_idx']
                 isoform_coexpression = state['isoform_coexpression']
                 isoform_coexpression_idx = state['isoform_coexpression_idx']
+                gene_iso_mapping = state.get('gene_iso_mapping', {})
             else:
                 state['loading_progress'].update({'step': 6, 'msg': 'Step 6/8: Loading Coexpression Sparse Matrices...'})
                 gene_coexpression = None
                 gene_coexpression_idx = None
                 isoform_coexpression = None
                 isoform_coexpression_idx = None
+                gene_iso_mapping = {}
                 if path_coexp:
                     if not os.path.exists(path_coexp):
                         raise FileNotFoundError(f"Coexpression directory not found: {path_coexp}")
@@ -1874,6 +1944,12 @@ def _register_callbacks(app, state):
                         isoform_coexpression = load_npz(iso_mat_path)
                         with open(iso_idx_path, 'rb') as f:
                            isoform_coexpression_idx = pickle.load(f)
+                           
+                    # Load precomputed gene-isoform mapping table
+                    mapping_path = os.path.join(path_coexp, "gene_iso_mapping.pkl")
+                    if os.path.exists(mapping_path):
+                        with open(mapping_path, 'rb') as f:
+                            gene_iso_mapping = pickle.load(f)
                            
             # Step 7: FASTA and InterPro Domains
             mtime_fasta = get_path_mtime(path_fasta) if path_fasta else None
@@ -1960,6 +2036,7 @@ def _register_callbacks(app, state):
             state['gene_coexpression_idx'] = gene_coexpression_idx
             state['isoform_coexpression'] = isoform_coexpression
             state['isoform_coexpression_idx'] = isoform_coexpression_idx
+            state['gene_iso_mapping'] = gene_iso_mapping
             state['ci_df'] = ci_df
             state['ci_columns'] = ci_columns or []
             
@@ -2852,8 +2929,13 @@ print("\\n=== Drive mapped successfully! ===")
                 {'label': ' Mean', 'value': 'mean'},
                 {'label': ' Sum', 'value': 'sum', 'disabled': not has_sum}
             ]
-            feedback_style = {"display": "block", "backgroundColor": "#d4efdf", "color": "#196f3d"}
-            feedback_msg = "Data sources successfully loaded and applied!"
+            warning_msg = state.get('mapping_warning', "")
+            if warning_msg:
+                feedback_style = {"display": "block", "backgroundColor": "#fef9e7", "color": "#7d6608", "border": "1px solid #f9e79f"}
+                feedback_msg = f"Data sources successfully loaded with warning: {warning_msg}"
+            else:
+                feedback_style = {"display": "block", "backgroundColor": "#d4efdf", "color": "#196f3d"}
+                feedback_msg = "Data sources successfully loaded and applied!"
             
             return True, {"display": "none"}, "", {"width": "100%"}, feedback_msg, feedback_style, {"display": "none"}, {"display": "flex", "width": "100%", "marginBottom": "20px"}, coexp_style, toggle_options, new_updated_time, False, False, False, False, False, False, False, False, False, False, False, False
             
@@ -4121,6 +4203,7 @@ print("\\n=== Drive mapped successfully! ===")
             max_isoforms=120,
             expanded_gene_position=expanded_gene_position,
             threshold=threshold_val,
+            gene_iso_mapping=state.get('gene_iso_mapping'),
         )
         return elements, cyto_layout
 
@@ -4216,6 +4299,8 @@ print("\\n=== Drive mapped successfully! ===")
         state['gene_coexpression_idx'] = None
         state['isoform_coexpression'] = None
         state['isoform_coexpression_idx'] = None
+        state['gene_iso_mapping'] = {}
+        state['mapping_warning'] = ""
         
         # Derived tables
         state['table_df_mean'] = None

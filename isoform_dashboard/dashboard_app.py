@@ -252,6 +252,7 @@ def main():
     gene_coexpression_idx = None
     isoform_coexpression = None
     isoform_coexpression_idx = None
+    gene_iso_mapping = {}
     
     if args.gene_coexpression_dir:
         import pickle
@@ -271,6 +272,13 @@ def main():
                 isoform_coexpression = load_npz(iso_mat_path)
                 with open(iso_idx_path, 'rb') as f:
                     isoform_coexpression_idx = pickle.load(f)
+                    
+            # Load precomputed gene-isoform mapping table
+            mapping_path = os.path.join(args.gene_coexpression_dir, "gene_iso_mapping.pkl")
+            if os.path.exists(mapping_path):
+                print(f"Loading gene-isoform mapping table from: {mapping_path}")
+                with open(mapping_path, 'rb') as f:
+                    gene_iso_mapping = pickle.load(f)
                     
         except Exception as e:
             print(f"Failed to read coexpression matrices: {e}", file=sys.stderr)
@@ -308,6 +316,7 @@ def main():
                     gene_coexpression_idx=gene_coexpression_idx,
                     isoform_coexpression=isoform_coexpression,
                     isoform_coexpression_idx=isoform_coexpression_idx,
+                    gene_iso_mapping=gene_iso_mapping,
                     path_mean=args.input_mean,
                     path_sum=args.input_sum,
                     path_gtf=args.exons,

@@ -10,7 +10,7 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
                               top_k_genes=10, top_k_isoforms=10, isoforms_by_gene=None,
                               gene_names=None, df_expression=None, global_col=None,
                               max_isoforms=120, expanded_gene_position=None,
-                              threshold=0.1):
+                              threshold=0.1, gene_iso_mapping=None):
     """Generate Cytoscape elements using precomputed sparse matrices.
 
     If target_gene is provided, a localized subgraph centred on that gene is
@@ -41,6 +41,8 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
                                 node's position before it was expanded. Used to
                                 offset the compound box so it doesn't obscure
                                 incident gene-gene edges.
+        gene_iso_mapping:       Precomputed lookup dictionary mapping gene IDs
+                                to lists of constituent isoform IDs.
     """
     elements = []
     if expanded_genes is None:
@@ -147,7 +149,7 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
             continue
         if isoform_coexpression is None or isoform_coexpression_idx is None:
             continue
-        if not isoforms_by_gene and df_expression is None:
+        if not isoforms_by_gene and df_expression is None and not gene_iso_mapping:
             continue
 
         # Build isoform lookup
@@ -164,9 +166,14 @@ def generate_network_elements(gene_coexpression=None, gene_coexpression_idx=None
         # Start with all isoforms in the GTF for this gene
         if isoforms_by_gene:
             gtf_isoforms = list(isoforms_by_gene.get(gene, {}).keys())
-        else:
+        elif df_expression is not None:
             # Fallback to expression mapping if GTF exons file is omitted
             gtf_isoforms = df_expression[df_expression['gene_id'] == gene]['transcript_id'].tolist()
+        elif gene_iso_mapping and gene in gene_iso_mapping:
+            # Fallback to precomputed gene-isoform mapping table
+            gtf_isoforms = list(gene_iso_mapping[gene])
+        else:
+            gtf_isoforms = []
 
         # FIX 2 – filter & rank by expression to match the exon-panel cap.
         # The exon panel uses nlargest(max_display, global_col) from the active
