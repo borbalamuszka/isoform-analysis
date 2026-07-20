@@ -45,6 +45,8 @@
    ```
    Then open `http://127.0.0.1:8050` in your web browser. A welcome screen will automatically prompt you to select your data files using a built-in visual file browser. Once selected, click **Apply Changes & Reload** to load the dataset dynamically.
    
+   > 💡 **Help Guide:** Once the dashboard is running, you can click the **💡 Help Guide** button in the top header to consult a comprehensive tabbed manual detailing data structure requirements, primary/secondary sources, and options for all tools.
+   
    > **Dynamic Switching:** You can open the **Configure Data Sources** dialog at any time during execution to load a completely new or updated dataset dynamically. The application state will reload and refresh the visuals.
 
    ### Option B: Run with command-line arguments (Classic)
