@@ -309,6 +309,40 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
         state['ci_dict'] = state['ci_df'].to_dict('index') if state['ci_df'] is not None else {}
 
+        # Check if we have no expression results, but we do have GTF or Co-expression directory loaded
+        if (state.get('results_df_mean') is None or state['results_df_mean'].empty) and \
+           (state.get('results_df_sum') is None or state['results_df_sum'].empty):
+            fallback_records = []
+            gene_ids_set = set()
+            
+            # 1. Fallback from GTF (isoforms_by_gene)
+            if state.get('isoforms_by_gene'):
+                for gene_id, transcripts in state['isoforms_by_gene'].items():
+                    gene_ids_set.add(gene_id)
+                    fallback_records.append({
+                        "gene_id": gene_id,
+                        "n_isoforms": len(transcripts),
+                        "top_isoform_entropy": float('nan'),
+                        "summed_isoform_entropy": float('nan'),
+                        "mean_expression": 0.0,
+                    })
+            
+            # 2. Fallback from Co-expression index
+            if state.get('gene_coexpression_idx') is not None:
+                for gene_id in state['gene_coexpression_idx']:
+                    if gene_id not in gene_ids_set:
+                        gene_ids_set.add(gene_id)
+                        fallback_records.append({
+                            "gene_id": gene_id,
+                            "n_isoforms": 1,
+                            "top_isoform_entropy": float('nan'),
+                            "summed_isoform_entropy": float('nan'),
+                            "mean_expression": 0.0,
+                        })
+            
+            if fallback_records:
+                state['results_df_mean'] = pd.DataFrame(fallback_records)
+
         if state['results_df_mean'] is not None and not state['results_df_mean'].empty:
             state['results_df_mean']["min_spearman"] = compute_min_spearman_per_gene(state['results_df_mean'])
             state['results_df_mean']["rank"] = compute_gene_ranking(state['results_df_mean'])
@@ -354,10 +388,17 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
     recompute_derived_state()
     state['recompute_derived_state'] = recompute_derived_state
 
+    has_any_widget_data = (
+        (df_mean is not None and not df_mean.empty) or
+        (df_sum is not None and not df_sum.empty) or
+        (isoforms_by_gene is not None and len(isoforms_by_gene) > 0) or
+        (gene_coexpression is not None)
+    )
+
     welcome_banner = html.Div(
         id="welcome-banner",
         style={
-            "display": "block" if df_mean is None or df_mean.empty else "none",
+            "display": "none" if has_any_widget_data else "block",
             "backgroundColor": "#ebf5fb",
             "borderLeft": "6px solid #3498db",
             "padding": "16px 20px",
@@ -370,7 +411,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
             html.P([
                 "No dataset is currently loaded. To visualize your data, please click the ",
                 html.Strong("⚙ Configure Data Sources"),
-                " button in the top-right corner to load your Mean Expression TSV file and other optional data files (such as Sum Expression TSV, Exons GTF, AlphaFold 3D structures, etc.)."
+                " button in the top-right corner to load your datasets (such as Mean/Sum Expression TSV, Exons GTF, or Co-expression matrices, etc.). At least one primary source is required to render a visualization."
             ], style={"margin": "0", "color": "#2c3e50", "fontSize": "14px"})
         ]
     )
@@ -418,7 +459,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     
                     # Field 1: Mean Expression (TSV)
                     html.Div([
-                        html.Label(["Mean Expression TSV File (Required for visualization) ", html.Span("ℹ️", title="A tab-separated table containing mean expression values per isoform across conditions. First column must be 'transcript_id'.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Mean Expression TSV File (Optional, required for expression plots) ", html.Span("ℹ️", title="A tab-separated table containing mean expression values per isoform across conditions. First column must be 'transcript_id'.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-mean", value=state['path_mean'], placeholder="e.g. Z:\\distributions_condition_mean.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-mean", n_clicks=0, className="btn-browse")
@@ -1053,29 +1094,35 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                 children=[
                                     html.Div([
                                         html.H4("Detailed Guide to Data Inputs", style={"color": "#2c3e50", "marginTop": "15px"}),
-                                        html.P("Below is an in-depth breakdown of the files you can supply via the 'Configure Data Sources' dialog:"),
+                                        html.P("To display and enable various dashboard panels, you must configure at least one of the primary data sources below. Optional secondary sources enrich these panels once loaded."),
                                         
                                         html.Div([
-                                            html.H5("📊 Expression Datasets (Mean & Sum)", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("Expected format: Tab-separated (TSV) or comma-separated (CSV) tables. The first column must be named 'transcript_id'. Remaining columns contain either sample name expressions (for raw matrices) or aggregated expression values (mean/sum per condition group). The app requires the Mean dataset, while the Sum dataset is optional."),
+                                            # Subsection: Primary Sources
+                                            html.H5("🔑 Primary Data Sources (At least one is required to enable widgets)", style={"color": "#2c3e50", "borderBottom": "2px solid #3498db", "paddingBottom": "4px", "marginTop": "15px"}),
                                             
-                                            html.H5("🧬 Exons GTF File", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A genomic annotation file in standard GTF format containing exon and CDS features. Used by the dashboard to draw exon structures, map transcripts to genes, and calculate residue-to-exon mappings for the 3D viewer. If omitted, structural visualizations are disabled."),
+                                            html.H5("📊 Expression Datasets (Mean and/or Sum) [Required for expression widgets]", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("Expected format: Tab-separated (TSV) or comma-separated (CSV) tables. The first column must be named 'transcript_id'. Remaining columns contain either sample name expressions (for raw matrices) or aggregated expression values (mean/sum per condition group). Loading at least one of these enables the Isoform Expression distribution bar chart and the Entropy Scatter Plot."),
                                             
-                                            html.H5("📈 Confidence Intervals File (CIs)", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A precomputed TSV file containing bootstrap-derived mean and 95% confidence intervals (2.5th and 97.5th percentiles) for each transcript. Used to render error bars on the expression bar charts."),
+                                            html.H5("🧬 Exons GTF File [Required for structural widgets]", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A genomic annotation file in standard GTF format containing exon and CDS features. Used by the dashboard to draw the 2D exon structures, map transcripts to genes, and calculate residue-to-exon mappings. When expression matrices are missing, the GTF serves as a fallback to populate the list of genes in your search table."),
                                             
-                                            html.H5("🖥 Protein FASTA File", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A standard FASTA file containing translated peptide sequence records for each transcript. Required to populate the 'Protein Sequence' interactive text box."),
+                                            html.H5("🕸 Precomputed Co-expression Directory [Required for network widget]", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A folder containing precomputed correlation matrices (gene_coexpression.npz, isoform_coexpression.npz) and index mappings (gene_index.pkl, isoform_index.pkl) generated by the co-expression script. Required to display the Cytoscape co-expression network."),
                                             
-                                            html.H5("🌐 AlphaFold 3D Geometry Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A directory containing residue-level AlphaFold structure geometry mappings (.json files) and pre-generated interactive 3D HTML models. Enables the 3D Molecular structure panel."),
+                                            # Subsection: Secondary/Optional Enhancements
+                                            html.H5("💡 Secondary Enhancements (Optional)", style={"color": "#2c3e50", "borderBottom": "2px solid #2ecc71", "paddingBottom": "4px", "marginTop": "20px"}),
                                             
-                                            html.H5("🔍 InterPro Results Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A folder containing precomputed EBI InterPro Scan results (.json files) named by transcript ID. Clicking an exon highlights its corresponding domain annotations on the sequence and 3D structure."),
+                                            html.H5("📈 Confidence Intervals File (CIs) [Enriches expression plot]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("A precomputed TSV file containing bootstrap-derived mean and 95% confidence intervals (2.5th and 97.5th percentiles) for each transcript. Used to render error bars on the expression bar charts (requires Mean Expression TSV)."),
                                             
-                                            html.H5("🕸 Precomputed Co-expression Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
-                                            html.P("A folder containing precomputed correlation matrices (.npz) and index mappings (.pkl) generated by the co-expression script. Required to display the Cytoscape correlation network.")
+                                            html.H5("🌐 AlphaFold 3D Geometry Directory [Enriches structural viewer]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("A directory containing residue-level AlphaFold structure geometry mappings (.json files) and pre-generated interactive 3D HTML models. Enables the 3D Molecular structure panel (requires Exons GTF File)."),
+                                            
+                                            html.H5("🖥 Protein FASTA File [Enriches sequence viewer]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("A standard FASTA file containing translated peptide sequence records for each transcript. Required to populate the amino acid sequence text box (requires Exons GTF File)."),
+                                            
+                                            html.H5("🔍 InterPro Results Directory [Enriches domain overlay]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("A folder containing precomputed EBI InterPro Scan results (.json files) named by transcript ID. Clicking an exon highlights its corresponding domain annotations on the sequence and 3D structure (requires Exons GTF and FASTA).")
                                         ])
                                     ], style={"padding": "10px"})
                                 ]
@@ -1287,7 +1334,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         # Split view container
         html.Div(
             id="main-dashboard-content",
-            style={"display": "flex" if df_mean is not None and not df_mean.empty else "none", "width": "100%", "marginBottom": "20px"},
+            style={"display": "flex" if has_any_widget_data else "none", "width": "100%", "marginBottom": "20px"},
             children=[
             # Left panel - Visualizations
             html.Div([
@@ -1667,42 +1714,52 @@ def _register_callbacks(app, state):
                 return None
 
         try:
+            if not (path_mean or path_sum or path_gtf or path_coexp):
+                raise ValueError("Insufficient data to render any widget. You must configure at least one primary source: Mean Expression, Sum Expression, Exons GTF, or Co-expression matrices.")
+
+            sample_cols = []
+
             # Step 1: Mean Expression TSV loading
-            mtime_mean = get_path_mtime(path_mean)
-            if (path_mean == state.get('path_mean') and 
-                mtime_mean is not None and mtime_mean == state.get('mtime_mean') and 
-                state.get('df_mean') is not None):
-                state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Reusing cached Mean Expression data...'})
-                df_mean = state['df_mean']
-                results_df_mean = state['results_df_mean']
-                sample_cols = state['sample_cols']
-                global_col_mean = state['global_col_mean']
+            mtime_mean = get_path_mtime(path_mean) if path_mean else None
+            df_mean = None
+            results_df_mean = pd.DataFrame()
+            global_col_mean = ""
+
+            if path_mean:
+                if (path_mean == state.get('path_mean') and 
+                    mtime_mean is not None and mtime_mean == state.get('mtime_mean') and 
+                    state.get('df_mean') is not None):
+                    state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Reusing cached Mean Expression data...'})
+                    df_mean = state['df_mean']
+                    results_df_mean = state['results_df_mean']
+                    sample_cols = state['sample_cols']
+                    global_col_mean = state['global_col_mean']
+                else:
+                    state['loading_progress'].update({'step': 1, 'msg': 'Step 1/8: Reading Mean Expression TSV...'})
+                    if not os.path.exists(path_mean):
+                        raise FileNotFoundError(f"Mean Expression file not found: {path_mean}")
+                    if os.path.isdir(path_mean):
+                        raise IsADirectoryError(f"Mean Expression path is a directory: {path_mean}")
+                        
+                    df_mean = pd.read_csv(path_mean, sep="\t")
+                    if "gene_id" not in df_mean.columns or "transcript_id" not in df_mean.columns:
+                        raise ValueError("Mean Expression input must contain 'gene_id' and 'transcript_id' columns.")
+                    if len(df_mean.columns) < 3:
+                        raise ValueError("Mean Expression input must have at least 3 columns.")
+                        
+                    global_col_mean = df_mean.columns[2]
+                    meta_cols_mean = {"gene_id", "transcript_id", global_col_mean}
+                    sample_cols = [c for c in df_mean.columns if c not in meta_cols_mean and pd.api.types.is_numeric_dtype(df_mean[c])]
+                    if len(sample_cols) < 2:
+                        raise ValueError("Mean dataset needs at least two numeric sample columns to compute correlations.")
+                        
+                    # Step 2: Mean Expression Calculations
+                    state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Calculating Mean Expression Entropy & Correlations...'})
+                    results_mean = calculate_entropy_and_correlation(df_mean, sample_cols, global_col_mean)
+                    results_df_mean = pd.DataFrame(results_mean)
             else:
-                state['loading_progress'].update({'step': 1, 'msg': 'Step 1/8: Reading Mean Expression TSV...'})
-                if not path_mean:
-                    raise ValueError("Mean Expression TSV file is required.")
-                if not os.path.exists(path_mean):
-                    raise FileNotFoundError(f"Mean Expression file not found: {path_mean}")
-                if os.path.isdir(path_mean):
-                    raise IsADirectoryError(f"Mean Expression path is a directory: {path_mean}")
-                    
-                df_mean = pd.read_csv(path_mean, sep="\t")
-                if "gene_id" not in df_mean.columns or "transcript_id" not in df_mean.columns:
-                    raise ValueError("Mean Expression input must contain 'gene_id' and 'transcript_id' columns.")
-                if len(df_mean.columns) < 3:
-                    raise ValueError("Mean Expression input must have at least 3 columns.")
-                    
-                global_col_mean = df_mean.columns[2]
-                meta_cols_mean = {"gene_id", "transcript_id", global_col_mean}
-                sample_cols = [c for c in df_mean.columns if c not in meta_cols_mean and pd.api.types.is_numeric_dtype(df_mean[c])]
-                if len(sample_cols) < 2:
-                    raise ValueError("Need at least two numeric sample columns to compute correlations.")
-                    
-                # Step 2: Mean Expression Calculations
-                state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Calculating Mean Expression Entropy & Correlations...'})
-                results_mean = calculate_entropy_and_correlation(df_mean, sample_cols, global_col_mean)
-                results_df_mean = pd.DataFrame(results_mean)
-                
+                state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Skipping Mean Expression loading...'})
+
             # Step 3: Sum Expression
             mtime_sum = get_path_mtime(path_sum) if path_sum else None
             if (path_sum == state.get('path_sum') and 
@@ -1712,6 +1769,8 @@ def _register_callbacks(app, state):
                 results_df_sum = state['results_df_sum']
                 global_col_sum = state['global_col_sum']
                 has_sum = state['has_sum']
+                if not sample_cols and 'sample_cols' in state:
+                    sample_cols = state['sample_cols']
             else:
                 state['loading_progress'].update({'step': 3, 'msg': 'Step 3/8: Processing Sum Expression TSV...'})
                 df_sum = None
@@ -1729,6 +1788,13 @@ def _register_callbacks(app, state):
                         raise ValueError("Sum Expression input must contain 'gene_id' and 'transcript_id' columns.")
                     has_sum = True
                     global_col_sum = df_sum.columns[2]
+                    
+                    if not sample_cols:
+                        meta_cols_sum = {"gene_id", "transcript_id", global_col_sum}
+                        sample_cols = [c for c in df_sum.columns if c not in meta_cols_sum and pd.api.types.is_numeric_dtype(df_sum[c])]
+                        if len(sample_cols) < 2:
+                            raise ValueError("Sum dataset needs at least two numeric sample columns to compute correlations.")
+                            
                     results_sum = calculate_entropy_and_correlation(df_sum, sample_cols, global_col_sum)
                     results_df_sum = pd.DataFrame(results_sum)
                 else:
@@ -3114,18 +3180,32 @@ print("\\n=== Drive mapped successfully! ===")
     @functools.lru_cache(maxsize=256)
     def _base_exon_fig(gene_id: str, dataset: str):
         df = state['df_mean'] if dataset == 'mean' else state['df_sum']
-        if df is None or df.empty:
-            return go.Figure()
-        global_col = state['global_col_mean'] if dataset == 'mean' else state['global_col_sum']
-        sub = df[df["gene_id"] == gene_id]
-        if not sub.empty:
-            max_display = 120
-            if len(sub) > max_display:
-                sub = sub.nlargest(max_display, global_col)
-            sub = sub.sort_values(global_col, ascending=False)
-            transcript_order = sub["transcript_id"].tolist()
-        else:
-            transcript_order = None
+        transcript_order = None
+        if df is not None and not df.empty:
+            global_col = state['global_col_mean'] if dataset == 'mean' else state['global_col_sum']
+            sub = df[df["gene_id"] == gene_id]
+            if not sub.empty:
+                max_display = 120
+                if len(sub) > max_display:
+                    sub = sub.nlargest(max_display, global_col)
+                sub = sub.sort_values(global_col, ascending=False)
+                transcript_order = sub["transcript_id"].tolist()
+        
+        if transcript_order is None and state['isoforms_by_gene']:
+            txs = state['isoforms_by_gene'].get(gene_id, {})
+            if txs:
+                transcript_order = sorted(txs.keys())
+                
+        if not state['isoforms_by_gene']:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No exon structure data loaded.<br>Configure an Exons GTF file to view exon structure plots.",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=12, color="#7f8c8d")
+            )
+            return fig
+            
         return create_exon_visualization(
             gene_id,
             state['isoforms_by_gene'],
@@ -4019,9 +4099,6 @@ print("\\n=== Drive mapped successfully! ===")
         # Pass the active expression DataFrame so the isoform list is filtered
         # by expression level — matching the exon-panel's nlargest(120, global_col) cap.
         active_df  = state['df_mean'] if dataset == 'mean' else state['df_sum']
-        if active_df is None or active_df.empty:
-            return [], cyto_layout
-            
         active_col = state['global_col_mean'] if dataset == 'mean' else state['global_col_sum']
 
         # Handle None threshold and neighbors values from layout gracefully

@@ -16,6 +16,16 @@ def fig_isoform_sample_panels(gene_id: str, df: pd.DataFrame, sample_cols, has_c
 
     Optimized for faster rendering.
     """
+    if df is None or df.empty:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No expression data loaded.<br>Configure a Mean/Sum Expression TSV file to view the isoform expression plot.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=12, color="#7f8c8d")
+        )
+        return fig
+
     sub = df[df["gene_id"] == gene_id]
     if sub.empty:
         return go.Figure().update_layout(title=f"No isoforms found for {gene_id}")

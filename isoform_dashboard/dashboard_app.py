@@ -172,7 +172,7 @@ def main():
     results_df_sum = pd.DataFrame()
     global_col_sum = ""
 
-    if args.input_sum and df_mean is not None:
+    if args.input_sum:
         if not os.path.exists(args.input_sum):
             print(f"Warning: Sum input file not found: {args.input_sum}", file=sys.stderr)
         else:
@@ -185,8 +185,18 @@ def main():
                     print(f"Loaded sum dataset from: {args.input_sum}")
                     global_col_sum = df_sum.columns[2]
                     print(f"Using '{global_col_sum}' as the global aggregation column for sum dataset")
-                    results_sum = calculate_entropy_and_correlation(df_sum, sample_cols, global_col_sum)
-                    results_df_sum = pd.DataFrame(results_sum)
+                    
+                    if not sample_cols:
+                        meta_cols_sum = {"gene_id", "transcript_id", global_col_sum}
+                        sample_cols = [c for c in df_sum.columns if c not in meta_cols_sum and pd.api.types.is_numeric_dtype(df_sum[c])]
+                        if len(sample_cols) < 2:
+                            print("Need at least two numeric sample columns to compute correlations", file=sys.stderr)
+                            has_sum = False
+                            df_sum = None
+                            
+                    if has_sum:
+                        results_sum = calculate_entropy_and_correlation(df_sum, sample_cols, global_col_sum)
+                        results_df_sum = pd.DataFrame(results_sum)
             except Exception as e:
                 print(f"Failed to read sum TSV: {e}", file=sys.stderr)
 
@@ -194,6 +204,10 @@ def main():
         # Create empty placeholder
         global_col_sum = global_col_mean
         results_df_sum = pd.DataFrame()
+
+    # Verify that at least one primary widget source is supplied
+    if not (args.input_mean or args.input_sum or args.exons or args.gene_coexpression_dir):
+        print("Warning: Insufficient data to render any widget. Please supply at least one primary source: --input-mean, --input-sum, --exons, or --gene-coexpression-dir.", file=sys.stderr)
 
     # Load exon data
     isoforms_by_gene = {}

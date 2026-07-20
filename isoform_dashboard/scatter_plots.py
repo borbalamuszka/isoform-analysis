@@ -11,14 +11,28 @@ def fig_summed_vs_top_entropy_colored_by_min_spearman(results_df, selected_gene=
     Assumes min_spearman and rank are pre-computed in results_df.
     """
     if results_df.empty:
-        return go.Figure()
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No expression data loaded.<br>Configure a Mean/Sum Expression TSV file to view the entropy scatter plot.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=12, color="#7f8c8d")
+        )
+        return fig
 
     df_plot = results_df[["gene_id", "top_isoform_entropy", "summed_isoform_entropy",
                           "n_isoforms", "min_spearman", "rank"]].copy()
     df_plot = df_plot.dropna(subset=["min_spearman"])
 
     if df_plot.empty:
-        return go.Figure()
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No expression data loaded.<br>Configure a Mean/Sum Expression TSV file to view the entropy scatter plot.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=12, color="#7f8c8d")
+        )
+        return fig
 
     # Add selection indicator
     df_plot["is_selected"] = df_plot["gene_id"] == selected_gene
