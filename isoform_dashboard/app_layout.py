@@ -192,6 +192,40 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         "color": "#333333",
     }
 
+    tab_style = {
+        'borderBottom': '1px solid #d6d6d6',
+        'padding': '8px 16px',
+        'fontWeight': 'bold',
+        'backgroundColor': '#f8f9fa',
+        'color': '#2c3e50',
+        'border': '1px solid #d6d6d6',
+        'borderRadius': '4px 4px 0 0',
+        'marginRight': '4px',
+        'fontSize': '13px',
+        'display': 'flex',
+        'alignItems': 'center',
+        'justifyContent': 'center',
+        'height': '38px',
+        'cursor': 'pointer'
+    }
+    tab_selected_style = {
+        'borderTop': '3px solid #f39c12',
+        'borderBottom': 'none',
+        'backgroundColor': 'white',
+        'padding': '8px 16px',
+        'fontWeight': 'bold',
+        'color': '#2c3e50',
+        'fontSize': '13px',
+        'borderLeft': '1px solid #d6d6d6',
+        'borderRight': '1px solid #d6d6d6',
+        'borderRadius': '4px 4px 0 0',
+        'display': 'flex',
+        'alignItems': 'center',
+        'justifyContent': 'center',
+        'height': '38px',
+        'cursor': 'pointer'
+    }
+
     # Mutable state container
     state = {
         'df_mean': df_mean,
@@ -941,6 +975,213 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         ]
     )
 
+    help_popup_layout = html.Div(
+        id="help-popup-window",
+        style={
+            "display": "none",
+            "position": "fixed",
+            "zIndex": "2002",
+            "left": "0",
+            "top": "0",
+            "width": "100%",
+            "height": "100%",
+            "overflow": "auto",
+            "backgroundColor": "rgba(0,0,0,0.5)",
+            "backdropFilter": "blur(4px)",
+        },
+        children=[
+            html.Div(
+                style={
+                    "backgroundColor": "#ffffff",
+                    "margin": "5% auto",
+                    "padding": "24px",
+                    "border": "1px solid #888",
+                    "width": "75%",
+                    "maxWidth": "850px",
+                    "borderRadius": "8px",
+                    "boxShadow": "0 4px 20px rgba(0,0,0,0.2)",
+                    "fontFamily": "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
+                },
+                children=[
+                    html.Div([
+                        html.H3("📖 Isoform Analysis User Guide", style={"margin": "0 0 20px 0", "color": "#2c3e50", "display": "inline-block"}),
+                        html.Button("×", id="btn-close-help", n_clicks=0, style={
+                            "float": "right",
+                            "fontSize": "28px",
+                            "fontWeight": "bold",
+                            "border": "none",
+                            "background": "none",
+                            "cursor": "pointer",
+                            "color": "#aaa",
+                        })
+                    ]),
+                    
+                    dcc.Tabs(
+                        id="help-tabs",
+                        value="tab-overview",
+                        children=[
+                            dcc.Tab(
+                                label="Overview",
+                                value="tab-overview",
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                                children=[
+                                    html.Div([
+                                        html.H4("About the Isoform Analysis Dashboard", style={"color": "#2c3e50", "marginTop": "15px"}),
+                                        html.P("This dashboard is an interactive visual analytics platform designed to explore and analyze gene isoform-level expression patterns. Key capabilities include:"),
+                                        html.Ul([
+                                            html.Li("Ranking and filtering genes using custom metrics such as min Spearman correlation and isoform entropy."),
+                                            html.Li("Visualizing isoform-specific expression distributions with error bars computed via bootstrapping."),
+                                            html.Li("Mapping transcript coordinate structures (exons, CDS, and UTR regions) to functional domains."),
+                                            html.Li("Displaying interactive AlphaFold 3D models with per-exon and per-residue highlighting."),
+                                            html.Li("Exploring gene and isoform-level co-expression networks.")
+                                        ]),
+                                        html.H4("Quick Start Guide", style={"color": "#2c3e50"}),
+                                        html.Ol([
+                                            html.Li([html.Strong("Load Datasets: "), "Open the 'Configure Data Sources' dialog at the top right to select your expression tables, GTF structure, and other precomputed outputs. Click 'Apply Changes & Reload' to refresh the app."]),
+                                            html.Li([html.Strong("Select a Gene: "), "Click on any gene row in the rankings table at the left to select it. The rest of the dashboard panels will dynamically load information for that gene."]),
+                                            html.Li([html.Strong("Explore Panels: "), "View expression distributions, browse structural exons, highlight residue segments on the AlphaFold 3D structure, or load the co-expression network."])
+                                        ])
+                                    ], style={"padding": "10px"})
+                                ]
+                            ),
+                            dcc.Tab(
+                                label="Data Sources Guide",
+                                value="tab-sources",
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                                children=[
+                                    html.Div([
+                                        html.H4("Detailed Guide to Data Inputs", style={"color": "#2c3e50", "marginTop": "15px"}),
+                                        html.P("Below is an in-depth breakdown of the files you can supply via the 'Configure Data Sources' dialog:"),
+                                        
+                                        html.Div([
+                                            html.H5("📊 Expression Datasets (Mean & Sum)", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("Expected format: Tab-separated (TSV) or comma-separated (CSV) tables. The first column must be named 'transcript_id'. Remaining columns contain either sample name expressions (for raw matrices) or aggregated expression values (mean/sum per condition group). The app requires the Mean dataset, while the Sum dataset is optional."),
+                                            
+                                            html.H5("🧬 Exons GTF File", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A genomic annotation file in standard GTF format containing exon and CDS features. Used by the dashboard to draw exon structures, map transcripts to genes, and calculate residue-to-exon mappings for the 3D viewer. If omitted, structural visualizations are disabled."),
+                                            
+                                            html.H5("📈 Confidence Intervals File (CIs)", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A precomputed TSV file containing bootstrap-derived mean and 95% confidence intervals (2.5th and 97.5th percentiles) for each transcript. Used to render error bars on the expression bar charts."),
+                                            
+                                            html.H5("🖥 Protein FASTA File", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A standard FASTA file containing translated peptide sequence records for each transcript. Required to populate the 'Protein Sequence' interactive text box."),
+                                            
+                                            html.H5("🌐 AlphaFold 3D Geometry Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A directory containing residue-level AlphaFold structure geometry mappings (.json files) and pre-generated interactive 3D HTML models. Enables the 3D Molecular structure panel."),
+                                            
+                                            html.H5("🔍 InterPro Results Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A folder containing precomputed EBI InterPro Scan results (.json files) named by transcript ID. Clicking an exon highlights its corresponding domain annotations on the sequence and 3D structure."),
+                                            
+                                            html.H5("🕸 Precomputed Co-expression Directory", style={"color": "#2980b9", "margin": "10px 0 5px 0"}),
+                                            html.P("A folder containing precomputed correlation matrices (.npz) and index mappings (.pkl) generated by the co-expression script. Required to display the Cytoscape correlation network.")
+                                        ])
+                                    ], style={"padding": "10px"})
+                                ]
+                            ),
+                            dcc.Tab(
+                                label="Preprocessing Suite",
+                                value="tab-preprocessing",
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                                children=[
+                                    html.Div([
+                                        html.H4("Guide to Precomputation Tools", style={"color": "#2c3e50", "marginTop": "15px"}),
+                                        html.P("Clicking '📊 Preprocess Data' opens a suite of web tools to prepare datasets directly from raw inputs. Below is what each option does:"),
+                                        
+                                        html.Div([
+                                            html.H5("1. Calculate Distribution & Confidence Intervals (CIs)", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("Runs the pipeline to filter low-contribution transcripts (based on a contribution percentage cutoff), aggregates sample values into Sum/Mean tables by condition using a sample grouping metadata file, and optionally bootstrap-resamples the matrix to compute confidence interval bounds."),
+                                            html.Ul([
+                                                html.Li("Metadata file: must map Sample IDs to Groups (e.g. condition, tissue)."),
+                                                html.Li("Bootstrap iterations: recommended 1000 for production, or 10-50 for quick test runs.")
+                                            ]),
+                                            html.Div([
+                                                html.Div(html.Strong("ℹ️ How to structure your Sample Grouping Metadata file:"), style={"marginBottom": "5px"}),
+                                                html.P("To group and aggregate your expression samples correctly, the metadata file must meet these requirements:"),
+                                                html.Ul([
+                                                    html.Li([html.Strong("Format: "), "Tab-separated values (TSV) or comma-separated (CSV)."]),
+                                                    html.Li([html.Strong("Sample ID Column: "), "Must contain sample identifiers matching the exact column names of your raw expression matrix (e.g. 'sample_id' or 'SampleName')."]),
+                                                    html.Li([html.Strong("Group Column: "), "Must map each sample ID to a target experimental group, condition, or tissue type (e.g. 'condition', 'cell_type')."]),
+                                                    html.Li("Extra columns (e.g. donor, batch, region) are allowed and will be ignored by the precomputation script.")
+                                                ]),
+                                                html.Div(html.Strong("Example Metadata Structure:"), style={"fontSize": "12px", "marginTop": "8px", "marginBottom": "4px"}),
+                                                html.Pre(
+                                                    "sample_id\tcondition\tregion\n"
+                                                    "Sample_A1\tControl\tCaudate\n"
+                                                    "Sample_A2\tControl\tDLPFC\n"
+                                                    "Sample_B1\tMDD\tCaudate\n"
+                                                    "Sample_B2\tMDD\tDLPFC",
+                                                    style={"backgroundColor": "#f8f9fa", "padding": "8px", "border": "1px solid #ddd", "borderRadius": "4px", "fontFamily": "monospace", "fontSize": "11px", "marginTop": "4px", "whiteSpace": "pre-wrap"}
+                                                )
+                                            ], style={"backgroundColor": "#f5f6fa", "padding": "12px", "borderRadius": "4px", "borderLeft": "3px solid #27ae60", "margin": "10px 0 15px 0", "fontSize": "13px"}),
+                                            
+                                            html.H5("2. Calculate Co-expression Matrix", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("Computes correlation matrices (Pearson or Spearman) for genes and isoforms across samples to map co-expression pathways. It saves outputs as memory-efficient sparse matrices (.npz) chunk by chunk."),
+                                            html.Ul([
+                                                html.Li("Correlation Method: choose between Spearman (rank-based, robust to outliers, default) and Pearson (value-based)."),
+                                                html.Li("Correlation Threshold: minimum absolute coefficient to keep an edge in the network (e.g. 0.3). Lower values consume significant memory."),
+                                                html.Li("Chunk Size: chunk size used to calculate correlation blocks to avoid RAM exhaustion.")
+                                            ]),
+                                            
+                                            html.H5("3. Query InterPro Protein Domains (EBI Scan API)", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("Queries EBI's REST API for functional domains based on the translated FASTA peptide sequences. Submits jobs in batch and polls for progress. Requires a contact email to prevent API throttling."),
+                                            
+                                            html.H5("4. Map Remote Windows Network Share", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("For Windows servers, maps a remote network path to a local drive letter to allow browsing and loading remote datasets.")
+                                        ])
+                                    ], style={"padding": "10px"})
+                                ]
+                            ),
+                            dcc.Tab(
+                                label="Dashboard Glossary",
+                                value="tab-glossary",
+                                style=tab_style,
+                                selected_style=tab_selected_style,
+                                children=[
+                                    html.Div([
+                                        html.H4("Controls and Visual Panel Directory", style={"color": "#2c3e50", "marginTop": "15px"}),
+                                        html.P("Glossary of controls available in the primary application viewport:"),
+                                        
+                                        html.Table([
+                                            html.Tr([
+                                                html.Th("Control/Panel", style={"textAlign": "left", "padding": "8px", "borderBottom": "2px solid #ddd"}),
+                                                html.Th("Functionality", style={"textAlign": "left", "padding": "8px", "borderBottom": "2px solid #ddd"})
+                                            ]),
+                                            html.Tr([
+                                                html.Td(html.Strong("🔄 Reset"), style={"padding": "8px", "borderBottom": "1px solid #eee"}),
+                                                html.Td("Clears all cached and loaded data variables, resets dropdowns, and returns the app back to the startup state.", style={"padding": "8px", "borderBottom": "1px solid #eee"})
+                                            ]),
+                                            html.Tr([
+                                                html.Td(html.Strong("Dataset (Mean / Sum)"), style={"padding": "8px", "borderBottom": "1px solid #eee"}),
+                                                html.Td("Toggle to switch the active aggregation dataset showing either mean or sum expression levels across sample groupings.", style={"padding": "8px", "borderBottom": "1px solid #eee"})
+                                            ]),
+                                            html.Tr([
+                                                html.Td(html.Strong("Sort rankings by"), style={"padding": "8px", "borderBottom": "1px solid #eee"}),
+                                                html.Td("Rank (default) sorts by rank-entropy (putting negative min Spearman first). Expression sorts by total gene expression level.", style={"padding": "8px", "borderBottom": "1px solid #eee"})
+                                            ]),
+                                            html.Tr([
+                                                html.Td(html.Strong("Show only negative Spearman"), style={"padding": "8px", "borderBottom": "1px solid #eee"}),
+                                                html.Td("Filter checkbox to isolate genes showing opposing isoform correlation patterns (which indicates potential isoform switches).", style={"padding": "8px", "borderBottom": "1px solid #eee"})
+                                            ]),
+                                            html.Tr([
+                                                html.Td(html.Strong("Exon Structure & Sequence"), style={"padding": "8px", "borderBottom": "1px solid #eee"}),
+                                                html.Td("Clicking an exon or domain highlights its position on the protein sequence box, and updates the 3D model view to zoom into that segment.", style={"padding": "8px", "borderBottom": "1px solid #eee"})
+                                            ])
+                                        ], style={"width": "100%", "borderCollapse": "collapse"})
+                                    ], style={"padding": "10px"})
+                                ]
+                            )
+                        ],
+                        style={"height": "auto"},
+                        content_style={"maxHeight": "450px", "overflowY": "auto", "padding": "15px", "border": "1px solid #d6d6d6", "borderTop": "none", "borderRadius": "0 0 4px 4px"}
+                    )
+                ]
+            )
+        ]
+    )
+
     app.layout = html.Div([
 
         # Settings and File selector stores
@@ -956,6 +1197,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         settings_popup_layout,
         preprocess_popup_layout,
         file_selector_layout,
+        help_popup_layout,
 
         dcc.Store(id="selected-domain"),
         # Title and header row with settings button
@@ -1003,6 +1245,25 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         "fontSize": "13px",
                         "transition": "background-color 0.2s",
                         "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"
+                    }
+                ),
+                html.Button(
+                    "💡 Help Guide",
+                    id="btn-open-help",
+                    n_clicks=0,
+                    style={
+                        "float": "right",
+                        "backgroundColor": "#f39c12",
+                        "color": "white",
+                        "border": "none",
+                        "padding": "8px 16px",
+                        "borderRadius": "4px",
+                        "cursor": "pointer",
+                        "fontWeight": "bold",
+                        "fontSize": "13px",
+                        "transition": "background-color 0.2s",
+                        "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
+                        "marginRight": "10px"
                     }
                 )
             ], style={"width": "100%"}),
@@ -1706,6 +1967,25 @@ def _register_callbacks(app, state):
         if trigger_id == "btn-open-preprocess":
             current_style["display"] = "block"
         elif trigger_id in ["btn-close-preprocess", "btn-cancel-preprocess"]:
+            current_style["display"] = "none"
+        return current_style
+
+    @app.callback(
+        Output("help-popup-window", "style"),
+        [Input("btn-open-help", "n_clicks"),
+         Input("btn-close-help", "n_clicks")],
+        [State("help-popup-window", "style")]
+    )
+    def toggle_help(open_clicks, close_clicks, current_style):
+        trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
+        if not current_style:
+            current_style = {"display": "none"}
+        else:
+            current_style = current_style.copy()
+            
+        if trigger_id == "btn-open-help":
+            current_style["display"] = "block"
+        elif trigger_id == "btn-close-help":
             current_style["display"] = "none"
         return current_style
 
