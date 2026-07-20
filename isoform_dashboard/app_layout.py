@@ -1102,9 +1102,9 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                                 html.P("To group and aggregate your expression samples correctly, the metadata file must meet these requirements:"),
                                                 html.Ul([
                                                     html.Li([html.Strong("Format: "), "Tab-separated values (TSV) or comma-separated (CSV)."]),
-                                                    html.Li([html.Strong("Sample ID Column: "), "Must contain sample identifiers matching the exact column names of your raw expression matrix (e.g. 'sample_id' or 'SampleName')."]),
-                                                    html.Li([html.Strong("Group Column: "), "Must map each sample ID to a target experimental group, condition, or tissue type (e.g. 'condition', 'cell_type')."]),
-                                                    html.Li("Extra columns (e.g. donor, batch, region) are allowed and will be ignored by the precomputation script.")
+                                                    html.Li([html.Strong("Flexible Columns & Grouping: "), "Your metadata file can contain any number of columns (e.g. donor, batch, region, condition, cell_type). You can dynamically specify which column to group by for any given run using the 'Sample Column' and 'Group Column' settings in the precomputation form."]),
+                                                    html.Li([html.Strong("Sample ID Column: "), "Select any column that lists unique sample identifiers matching the exact column names of your raw expression matrix (e.g. 'sample_id' or 'SampleName')."]),
+                                                    html.Li([html.Strong("Group/Condition Column: "), "Select any column describing experimental groups, conditions, or tissues (e.g. 'condition', 'cell_type') to aggregate your dataset on."])
                                                 ]),
                                                 html.Div(html.Strong("Example Metadata Structure:"), style={"fontSize": "12px", "marginTop": "8px", "marginBottom": "4px"}),
                                                 html.Pre(
