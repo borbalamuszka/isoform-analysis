@@ -236,8 +236,7 @@ def main():
                 
                 unresolved = parentless_transcripts - set(resolved_mappings.keys())
                 if unresolved:
-                    print(f"Error: GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}), and no expression/co-expression data is available to resolve them. Aborting startup.", file=sys.stderr)
-                    sys.exit(1)
+                    print(f"Warning: GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}) which could not be resolved.", file=sys.stderr)
                 
                 isoforms_by_gene = parse_isoform_file(args.exons)
                 print(f"Loaded exon data for {len(isoforms_by_gene)} genes")

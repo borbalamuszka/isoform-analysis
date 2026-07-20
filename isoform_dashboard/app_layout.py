@@ -331,6 +331,25 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         state['mapping_warning'] = warn_msg
                     log.warning("recompute_derived_state: " + warn_msg)
 
+        # Check for completely unresolved parentless transcripts if GTF is loaded
+        if state.get('path_gtf'):
+            try:
+                from .gtf_parser import parse_parentless_transcripts
+                parentless = parse_parentless_transcripts(state['path_gtf'])
+                if parentless:
+                    # Filter for those that are completely unresolved (not in isoforms_by_gene)
+                    all_mapped = {tx for txs in state['isoforms_by_gene'].values() for tx in txs.keys()}
+                    unresolved = parentless - all_mapped
+                    if unresolved:
+                        warn_msg = f"{len(unresolved)} parentless transcripts in GTF could not be resolved (e.g. {', '.join(list(unresolved)[:3])})."
+                        if state.get('mapping_warning'):
+                            state['mapping_warning'] += " " + warn_msg
+                        else:
+                            state['mapping_warning'] = warn_msg
+                        log.warning("recompute_derived_state: " + warn_msg)
+            except Exception as e:
+                log.warning(f"Error parsing parentless transcripts in derived state: {e}")
+
         state['genes_with_cds'] = set()
         if state['isoforms_by_gene']:
             state['genes_with_cds'] = {
@@ -2044,10 +2063,7 @@ def _register_callbacks(app, state):
                                     
                     unresolved = parentless_transcripts - set(resolved_mappings.keys())
                     if unresolved:
-                        raise ValueError(
-                            f"GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}), "
-                            f"and no expression or co-expression data is available to resolve them. Loading aborted."
-                        )
+                        log.warning(f"GTF contains {len(unresolved)} unresolved parentless transcripts (e.g. {', '.join(list(unresolved)[:3])}).")
                         
                     # Apply resolved mappings to isoforms_by_gene local variable
                     for tx_id, g_id in resolved_mappings.items():
