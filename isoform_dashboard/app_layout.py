@@ -162,14 +162,14 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
     app = Dash(__name__, suppress_callback_exceptions=True)
     app.title = "Isoform Analysis Dashboard"
 
-    # Build AlphaFold geometry mapping (transcript_nodots_gene_nodots -> file paths)
+    # Build geometry mapping (transcript_nodots_gene_nodots -> file paths)
     af_geometry_mapping = build_alphafold_geometry_mapping(geometry_dir) if geometry_dir else {}
     if geometry_dir and not af_geometry_mapping:
         log.warning("create_app: --geometry-dir=%r was given but no geometry entries were found", geometry_dir)
     elif not geometry_dir:
         log.warning("create_app: --geometry-dir not provided; 3D structure features will be disabled")
     else:
-        log.info("create_app: AlphaFold geometry mapping loaded: %d entries from %r",
+        log.info("create_app: geometry mapping loaded: %d entries from %r",
                  len(af_geometry_mapping), geometry_dir)
 
     # Discover pre-generated per-exon HTML viewers
@@ -520,7 +520,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     
                     # Field 1: Mean Expression (TSV)
                     html.Div([
-                        html.Label(["Mean Expression TSV File (Optional, required for expression plots) ", html.Span("ℹ️", title="A tab-separated table containing mean expression values per isoform across conditions. First column must be 'transcript_id'.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Mean Expression TSV File (used in expression plots) ", html.Span("ℹ️", title="A tab-separated table containing mean expression values per isoform across conditions. First column must be 'transcript_id'.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-mean", value=state['path_mean'], placeholder="e.g. Z:\\distributions_condition_mean.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-mean", n_clicks=0, className="btn-browse")
@@ -529,7 +529,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 2: Sum Expression (TSV)
                     html.Div([
-                        html.Label(["Sum Expression TSV File (Optional) ", html.Span("ℹ️", title="A tab-separated table containing summed expression values per isoform across samples.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Sum Expression TSV File (used in expression plots) ", html.Span("ℹ️", title="A tab-separated table containing summed expression values per isoform across samples.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-sum", value=state['path_sum'], placeholder="e.g. Z:\\distributions_condition_sum.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-sum", n_clicks=0, className="btn-browse")
@@ -538,16 +538,16 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 3: Exons GTF
                     html.Div([
-                        html.Label(["Exons GTF File (Optional, required for structure visualization) ", html.Span("ℹ️", title="A genomic annotation file in standard GTF format containing exon and CDS coordinates.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Exons GTF File (used in exon structure visualisation) ", html.Span("ℹ️", title="A genomic annotation file in standard GTF format containing exon and CDS coordinates.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-gtf", value=state['path_gtf'], placeholder="e.g. Z:\\expressed_isoforms.gtf", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-gtf", n_clicks=0, className="btn-browse")
                         ], className="settings-input-container")
                     ], className="settings-row"),
 
-                    # Field 4: AlphaFold Geometry Directory
+                    # Field 4: Geometry Directory
                     html.Div([
-                        html.Label(["AlphaFold Geometry Directory (Optional, required for 3D structures) ", html.Span("ℹ️", title="Directory containing residue geometry mappings (.json files) and interactive 3D HTML models.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Geometry Directory (used in 3D structures) ", html.Span("ℹ️", title="Directory containing residue geometry mappings (.json files) and interactive 3D HTML models.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-geom", value=state['path_geom'], placeholder="e.g. Z:\\alphafold_geometry", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-geom", n_clicks=0, className="btn-browse")
@@ -556,7 +556,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 5: Co-expression Directory
                     html.Div([
-                        html.Label(["Co-expression Matrices Directory (Optional, containing gene_coexpression.npz, etc.) ", html.Span("ℹ️", title="Directory containing precomputed sparse matrices (.npz) and lookup files (.pkl) for network co-expression.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Co-expression Matrices Directory (used in coexpression network visualisation) ", html.Span("ℹ️", title="Directory containing precomputed sparse matrices (.npz) and lookup files (.pkl) for network co-expression.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-coexp", value=state['path_coexp'], placeholder="e.g. Z:\\gene_coexpression_dir", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-coexp", n_clicks=0, className="btn-browse")
@@ -565,7 +565,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 6: Protein FASTA
                     html.Div([
-                        html.Label(["Protein Sequences FASTA (Optional) ", html.Span("ℹ️", title="A peptide sequences FASTA file used to display translated protein sequences in the dashboard.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Protein Sequences FASTA (used in sequence display) ", html.Span("ℹ️", title="A peptide sequences FASTA file used to display translated protein sequences in the dashboard.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-fasta", value=state['path_fasta'], placeholder="e.g. Z:\\proteins.fasta", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-fasta", n_clicks=0, className="btn-browse")
@@ -574,7 +574,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 7: InterPro Results Directory (Optional)
                     html.Div([
-                        html.Label(["InterPro Results Directory (Optional) ", html.Span("ℹ️", title="Directory containing EBI InterPro scan domain predictions (.json files) named by transcript ID.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["InterPro Results Directory (used to show domains on exon structures) ", html.Span("ℹ️", title="Directory containing EBI InterPro scan domain predictions (.json files) named by transcript ID.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-interpro", value=state['path_interpro'], placeholder="e.g. Z:\\interpro_dir", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-interpro", n_clicks=0, className="btn-browse")
@@ -583,7 +583,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
 
                     # Field 8: Confidence Intervals File
                     html.Div([
-                        html.Label(["Bootstrap Confidence Intervals TSV File (Optional) ", html.Span("ℹ️", title="Table of precomputed bootstrap confidence interval limits (ci_lower, ci_upper) used to draw error bars.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
+                        html.Label(["Bootstrap Confidence Intervals TSV File (used for error bars in expression) ", html.Span("ℹ️", title="Table of precomputed bootstrap confidence interval limits (ci_lower, ci_upper) used to draw error bars.", style={"cursor": "help", "color": "#95a5a6", "marginLeft": "4px"})], className="settings-label"),
                         html.Div([
                             dcc.Input(id="input-path-ci", value=state['path_ci'], placeholder="e.g. Z:\\confidence_intervals.tsv", className="settings-input"),
                             html.Button("Browse...", id="btn-browse-ci", n_clicks=0, className="btn-browse")
@@ -1135,14 +1135,14 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                             html.Li("Ranking and filtering genes using custom metrics such as min Spearman correlation and isoform entropy."),
                                             html.Li("Visualizing isoform-specific expression distributions with error bars computed via bootstrapping."),
                                             html.Li("Mapping transcript coordinate structures (exons, CDS, and UTR regions) to functional domains."),
-                                            html.Li("Displaying interactive AlphaFold 3D models with per-exon and per-residue highlighting."),
+                                            html.Li("Displaying interactive 3D models with per-exon and per-residue highlighting."),
                                             html.Li("Exploring gene and isoform-level co-expression networks.")
                                         ]),
                                         html.H4("Quick Start Guide", style={"color": "#2c3e50"}),
                                         html.Ol([
                                             html.Li([html.Strong("Load Datasets: "), "Open the 'Configure Data Sources' dialog at the top right to select your expression tables, GTF structure, and other precomputed outputs. Click 'Apply Changes & Reload' to refresh the app."]),
                                             html.Li([html.Strong("Select a Gene: "), "Click on any gene row in the rankings table at the left to select it. The rest of the dashboard panels will dynamically load information for that gene."]),
-                                            html.Li([html.Strong("Explore Panels: "), "View expression distributions, browse structural exons, highlight residue segments on the AlphaFold 3D structure, or load the co-expression network."])
+                                            html.Li([html.Strong("Explore Panels: "), "View expression distributions, browse structural exons, highlight residue segments on the 3D structure, or load the co-expression network."])
                                         ])
                                     ], style={"padding": "10px"})
                                 ]
@@ -1184,8 +1184,8 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                                             html.H5("📈 Confidence Intervals File (CIs) [Enriches expression plot]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
                                             html.P("A precomputed TSV file containing bootstrap-derived mean and 95% confidence intervals (2.5th and 97.5th percentiles) for each transcript. Used to render error bars on the expression bar charts (requires Mean Expression TSV)."),
                                             
-                                            html.H5("🌐 AlphaFold 3D Geometry Directory [Enriches structural viewer]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
-                                            html.P("A directory containing residue-level AlphaFold structure geometry mappings (.json files) and pre-generated interactive 3D HTML models. Enables the 3D Molecular structure panel (requires Exons GTF File)."),
+                                            html.H5("🌐 3D Geometry Directory [Enriches structural viewer]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
+                                            html.P("A directory containing residue-level structure geometry mappings (.json files) and pre-generated interactive 3D HTML models. Enables the 3D Molecular structure panel (requires Exons GTF File)."),
                                             
                                             html.H5("🖥 Protein FASTA File [Enriches sequence viewer]", style={"color": "#27ae60", "margin": "10px 0 5px 0"}),
                                             html.P("A standard FASTA file containing translated peptide sequence records for each transcript. Required to populate the amino acid sequence text box (requires Exons GTF File)."),
@@ -1608,7 +1608,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                 # 3D Structure Viewer (below protein sequence)
                 html.Div([
                     html.H4("3D Structure", style={**global_style, "marginBottom": "8px"}),
-                    # Exon selector — shown once a transcript with AlphaFold geometry is selected
+                    # Exon selector — shown once a transcript with geometry is selected
                     html.Div(
                         id="exon-selector-bar",
                         children=[],
@@ -1893,14 +1893,14 @@ def _register_callbacks(app, state):
                     isoforms_by_gene = parse_isoform_file(path_gtf)
                     gene_names = parse_gene_names(path_gtf)
                     
-            # Step 5: AlphaFold Geometry
+            # Step 5: Geometry
             mtime_geom = get_path_mtime(path_geom) if path_geom else None
             if (path_geom == state.get('path_geom') and 
                 (not path_geom or (mtime_geom is not None and mtime_geom == state.get('mtime_geom'))) and 
                 state.get('af_geometry_mapping') is not None):
                 af_geometry_mapping = state['af_geometry_mapping']
             else:
-                state['loading_progress'].update({'step': 5, 'msg': 'Step 5/8: Loading AlphaFold 3D Structures...'})
+                state['loading_progress'].update({'step': 5, 'msg': 'Step 5/8: Loading 3D Structures...'})
                 af_geometry_mapping = {}
                 if path_geom:
                     if not os.path.exists(path_geom):
@@ -2323,7 +2323,7 @@ def _register_callbacks(app, state):
                 "mean": "Select Mean Expression TSV File",
                 "sum": "Select Sum Expression TSV File",
                 "gtf": "Select Exons GTF File",
-                "geom": "Select AlphaFold Geometry Directory",
+                "geom": "Select Geometry Directory",
                 "coexp": "Select Precomputed Co-expression Directory",
                 "fasta": "Select Amino Acid FASTA File",
                 "interpro": "Select Precomputed InterPro TSV/XML/JSON Directory",
@@ -3810,7 +3810,7 @@ print("\\n=== Drive mapped successfully! ===")
 
         return {"transcript_id": selected_transcript, "exon_idx": exon_idx}
 
-    # ── In-memory cache for patched AlphaFold HTML files ─────────────────
+    # ── In-memory cache for patched HTML files ─────────────────
     # Reading + regex-patching the HTML on every exon button click is slow.
     # Cache the result keyed by absolute file path.
     _html_content_cache: dict = {}
@@ -3864,7 +3864,7 @@ print("\\n=== Drive mapped successfully! ===")
          Input("selected-exon", "data")],
     )
     def update_glb_viewer(selected_transcript, selected_gene, selected_exon):
-        """Update 3D structure viewer with AlphaFold HTML viewer.
+        """Update 3D structure viewer with HTML viewer.
 
         When an exon is selected (selected_exon store is set and matches the
         current transcript), load the pre-generated exon-highlighted HTML
@@ -3895,11 +3895,11 @@ print("\\n=== Drive mapped successfully! ===")
         if geo.get("is_sequence_alias"):
             alias_of = geo.get("alias_of", "")
             viewer_label = (
-                f"AlphaFold 3D – {selected_transcript} "
+                f"3D – {selected_transcript} "
                 f"(identical sequence to {alias_of})"
             )
         else:
-            viewer_label = f"AlphaFold 3D – {selected_transcript}"
+            viewer_label = f"3D – {selected_transcript}"
 
         # Override with exon-specific HTML if an exon is selected for this transcript
         if (selected_exon is not None and
@@ -3913,7 +3913,7 @@ print("\\n=== Drive mapped successfully! ===")
                 html_path = exon_htmls[exon_idx]
                 viewer_label = f"{viewer_label} · Exon {exon_idx + 1}"
 
-        # ── AlphaFold HTML viewer ─────────────────────────────────────────
+        # ── HTML viewer ─────────────────────────────────────────
         if html_path and os.path.isfile(html_path):
             html_content = _load_patched_html(html_path)
 
@@ -3957,7 +3957,7 @@ print("\\n=== Drive mapped successfully! ===")
                     if "mean_plddt" in df_geo.columns else None
                 )
                 return html.Div([
-                    html.P(f"AlphaFold geometry: {selected_transcript}",
+                    html.P(f"geometry: {selected_transcript}",
                            style={"fontWeight": "bold", "textAlign": "center"}),
                     html.P(
                         (f"Residues: {n_res}  |  Mean pLDDT: {mean_plddt:.1f}  |  "
@@ -4432,4 +4432,4 @@ print("\\n=== Drive mapped successfully! ===")
             progress_bar_style,
             feedback_msg,
             feedback_style
-        )
+        )

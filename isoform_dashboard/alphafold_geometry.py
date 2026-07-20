@@ -1,4 +1,4 @@
-"""AlphaFold 3D geometry handling.
+"""3D geometry handling.
 
 Manages:
 - Building transcript → geometry file mappings
@@ -136,7 +136,7 @@ def discover_exon_viewers(geometry_mapping: Dict[str, Dict]) -> int:
 
 def resolve_alphafold_geometry(transcript_id: str,
                                geometry_mapping: dict) -> dict | None:
-    """Look up the AlphaFold geometry entry for a transcript.
+    """Look up the geometry entry for a transcript.
 
     Normalises the transcript ID the same way extract_3d_geometry.py does:
     strip dots, lowercase.

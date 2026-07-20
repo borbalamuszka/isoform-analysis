@@ -3,7 +3,7 @@
 - Analyze gene isoform expression and generate distribution tables/plots.
 - Compute per‑gene metrics (entropy, Spearman) and bootstrap isoform means with CIs.
 - Query protein domains via InterPro Scan.
-- Create AlphaFold 3D geometry visualisations.
+- Create 3D geometry visualisations.
 - Explore results in an interactive Dash dashboard with exon, domain, and protein structure visualization.
 - Works with generic datasets; grouping and labels depend on the input data provided.
 
@@ -197,7 +197,7 @@ python -m isoform_distribution.distributions \
   - Interactive scatter plot: summed vs top isoform entropy, colored by min Spearman.
   - Isoform distribution panel: per‑sample/group bar charts; optional bootstrap CIs (`--ci-file`); switch between **mean** and **sum** tables.
   - Exon structure: color‑coded exons (orange CDS, blue UTR) from GTF; clickable InterPro domains.
-  - Support for AlphaFold 3D geometry visualization.
+  - Support for 3D geometry visualization.
   - Exon-level highlighting in the 3D viewer and protein sequence display.
   - **Web-Based Preprocessing Suite**: Launch distribution calculations, bootstrap CI calculations, co-expression matrix construction (Pearson/Spearman), InterPro scan API queries, and network drive mapping directly from the UI with real-time log streaming and progress bars.
 - **Inputs**
@@ -207,7 +207,7 @@ python -m isoform_distribution.distributions \
   - `--ci-file`: bootstrap CI TSV (optional).
   - `--exons`: GTF file with exon/CDS annotations (optional). If omitted, exon visualizations and 3D mapping features are disabled, and the co-expression compound nodes fallback to grouping isoforms by gene using the expression matrix.
   - `--proteins`: protein FASTA file (optional).
-  - `--geometry-dir`: AlphaFold geometry output directory (optional).
+  - `--geometry-dir`: geometry output directory (optional).
   - `--interpro-dir`: InterPro results directory (optional).
 - **Outputs**
   - Live app at `http://127.0.0.1:8050` (default).
@@ -244,13 +244,13 @@ python3 -m interpro.interpro_scan \
   --output data/project/output/interpro_results/TRANSCRIPT_ID.json
 ```
 
-### AlphaFold geometry conversion: `utilities/extract_3d_geometry.py`
+### geometry conversion: `utilities/extract_3d_geometry.py`
 
-Convert AlphaFold Server job outputs into per‑residue geometry summaries and
+Convert Server job outputs into per‑residue geometry summaries and
 HTML viewers (including optional per‑exon highlight viewers).
 
 - **Inputs**
-  - `--alphafold-dir`: AlphaFold Server output folder containing job subfolders.
+  - `--alphafold-dir`: Server output folder containing job subfolders.
   - `--output-dir`: target folder for geometry outputs.
   - `--model-index`: which ranked model to use (default: 0).
   - `--all-models`: process model indices 0–4 for every job (optional).

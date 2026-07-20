@@ -211,12 +211,12 @@ def prepare_table_data(results_df, isoforms_by_gene=None, gene_names=None,
 
         df_table["max_aa_length"] = df_table["gene_id"].apply(gene_max_aa_length)
 
-    # Add Has 3D column: True if any transcript has AlphaFold geometry
+    # Add Has 3D column: True if any transcript has geometry
     if isoforms_by_gene is not None and af_geometry_mapping:
         af_geometry_mapping = af_geometry_mapping or {}
 
         def gene_has_3d(gene_id):
-            """Check if any transcript of this gene has AlphaFold geometry."""
+            """Check if any transcript of this gene has geometry."""
             if gene_id not in isoforms_by_gene:
                 return False
             for transcript_id in isoforms_by_gene[gene_id].keys():

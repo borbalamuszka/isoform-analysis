@@ -8,7 +8,7 @@ Modules:
 - data_processing: Data analysis functions
 - gtf_parser: GTF file parsing
 - visualizations: Plotting functions
-- alphafold_geometry: AlphaFold structure visualization
+- alphafold_geometry: structure visualization
 - config: Configuration and styling
 """
 
