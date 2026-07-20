@@ -216,8 +216,38 @@ def main():
         if os.path.exists(args.exons):
             print(f"Loading exon structures from GTF file: {args.exons}")
             try:
+                from .gtf_parser import parse_parentless_transcripts
+                parentless_transcripts = parse_parentless_transcripts(args.exons)
+                
+                resolved_mappings = {}
+                df_expr = df_mean if df_mean is not None else df_sum
+                if df_expr is not None and not df_expr.empty:
+                    for idx, row in df_expr.iterrows():
+                        tx_id = row.get('transcript_id')
+                        g_id = row.get('gene_id')
+                        if tx_id in parentless_transcripts and pd.notna(tx_id) and pd.notna(g_id):
+                            resolved_mappings[tx_id] = g_id
+                
+                if gene_iso_mapping:
+                    for g_id, tx_list in gene_iso_mapping.items():
+                        for tx_id in tx_list:
+                            if tx_id in parentless_transcripts:
+                                resolved_mappings[tx_id] = g_id
+                
+                unresolved = parentless_transcripts - set(resolved_mappings.keys())
+                if unresolved:
+                    print(f"Error: GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}), and no expression/co-expression data is available to resolve them. Aborting startup.", file=sys.stderr)
+                    sys.exit(1)
+                
                 isoforms_by_gene = parse_isoform_file(args.exons)
                 print(f"Loaded exon data for {len(isoforms_by_gene)} genes")
+                
+                if parentless_transcripts:
+                    print(f"Applying fallback gene mappings for {len(parentless_transcripts)} parentless transcripts using expression/co-expression data.")
+                    for tx_id, g_id in resolved_mappings.items():
+                        if g_id not in isoforms_by_gene:
+                            isoforms_by_gene[g_id] = {}
+                        isoforms_by_gene[g_id][tx_id] = []
                 
                 # Also load gene names
                 print(f"Loading gene names from GTF file: {args.exons}")

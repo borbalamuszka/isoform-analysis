@@ -236,6 +236,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         'sample_cols': sample_cols or [],
         'global_col_mean': global_col_mean or "",
         'global_col_sum': global_col_sum or "",
+        'has_mean': df_mean is not None,
         'has_sum': has_sum,
         'isoforms_by_gene': isoforms_by_gene or {},
         'gene_names': gene_names or {},
@@ -1387,10 +1388,10 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                 dcc.RadioItems(
                     id='dataset-toggle',
                     options=[
-                        {'label': ' Mean', 'value': 'mean'},
+                        {'label': ' Mean', 'value': 'mean', 'disabled': df_mean is None},
                         {'label': ' Sum', 'value': 'sum', 'disabled': not has_sum}
                     ],
-                    value='mean',
+                    value='sum' if (df_mean is None and has_sum) else 'mean',
                     inline=True,
                     style={'display': 'inline-block'}
                 )
@@ -1792,6 +1793,7 @@ def _register_callbacks(app, state):
             df_mean = None
             results_df_mean = pd.DataFrame()
             global_col_mean = ""
+            has_mean = False
 
             if path_mean:
                 if (path_mean == state.get('path_mean') and 
@@ -1802,6 +1804,7 @@ def _register_callbacks(app, state):
                     results_df_mean = state['results_df_mean']
                     sample_cols = state['sample_cols']
                     global_col_mean = state['global_col_mean']
+                    has_mean = state.get('has_mean', True)
                 else:
                     state['loading_progress'].update({'step': 1, 'msg': 'Step 1/8: Reading Mean Expression TSV...'})
                     if not os.path.exists(path_mean):
@@ -1820,6 +1823,8 @@ def _register_callbacks(app, state):
                     sample_cols = [c for c in df_mean.columns if c not in meta_cols_mean and pd.api.types.is_numeric_dtype(df_mean[c])]
                     if len(sample_cols) < 2:
                         raise ValueError("Mean dataset needs at least two numeric sample columns to compute correlations.")
+                    
+                    has_mean = True
                         
                     # Step 2: Mean Expression Calculations
                     state['loading_progress'].update({'step': 2, 'msg': 'Step 2/8: Calculating Mean Expression Entropy & Correlations...'})
@@ -2017,7 +2022,39 @@ def _register_callbacks(app, state):
                     elif ci_df.index.name != 'isoform':
                         ci_df.index.name = 'isoform'
                     ci_columns = [col for col in ci_df.columns if col.startswith('ci_')]
+            # Check for parentless transcripts and try to resolve them/abort loading
+            if path_gtf and isoforms_by_gene:
+                from .gtf_parser import parse_parentless_transcripts
+                parentless_transcripts = parse_parentless_transcripts(path_gtf)
+                if parentless_transcripts:
+                    resolved_mappings = {}
+                    df_expr = df_mean if df_mean is not None else df_sum
+                    if df_expr is not None and not df_expr.empty:
+                        for idx, row in df_expr.iterrows():
+                            tx_id = row.get('transcript_id')
+                            g_id = row.get('gene_id')
+                            if tx_id in parentless_transcripts and pd.notna(tx_id) and pd.notna(g_id):
+                                resolved_mappings[tx_id] = g_id
                     
+                    if gene_iso_mapping:
+                        for g_id, tx_list in gene_iso_mapping.items():
+                            for tx_id in tx_list:
+                                if tx_id in parentless_transcripts:
+                                    resolved_mappings[tx_id] = g_id
+                                    
+                    unresolved = parentless_transcripts - set(resolved_mappings.keys())
+                    if unresolved:
+                        raise ValueError(
+                            f"GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}), "
+                            f"and no expression or co-expression data is available to resolve them. Loading aborted."
+                        )
+                        
+                    # Apply resolved mappings to isoforms_by_gene local variable
+                    for tx_id, g_id in resolved_mappings.items():
+                        if g_id not in isoforms_by_gene:
+                            isoforms_by_gene[g_id] = {}
+                        isoforms_by_gene[g_id][tx_id] = []
+                        
             # Apply loaded variables to state
             state['df_mean'] = df_mean
             state['df_sum'] = df_sum
@@ -2026,6 +2063,7 @@ def _register_callbacks(app, state):
             state['sample_cols'] = sample_cols
             state['global_col_mean'] = global_col_mean
             state['global_col_sum'] = global_col_sum
+            state['has_mean'] = has_mean
             state['has_sum'] = has_sum
             state['isoforms_by_gene'] = isoforms_by_gene
             state['gene_names'] = gene_names
@@ -2893,6 +2931,7 @@ print("\\n=== Drive mapped successfully! ===")
          Output("main-dashboard-content", "style"),
          Output("coexpression-network-container", "style"),
          Output("dataset-toggle", "options"),
+         Output("dataset-toggle", "value", allow_duplicate=True),
          Output("data-sources-updated", "data"),
          Output("btn-apply-settings", "disabled", allow_duplicate=True),
          Output("btn-cancel-settings", "disabled", allow_duplicate=True),
@@ -2918,17 +2957,22 @@ print("\\n=== Drive mapped successfully! ===")
         if progress.get('error'):
             error_msg = progress['error']
             feedback_style = {"display": "block", "backgroundColor": "#fadbd8", "color": "#78281f"}
-            return True, {"display": "none"}, "", {"width": "0%"}, error_msg, feedback_style, no_update, no_update, no_update, no_update, no_update, False, False, False, False, False, False, False, False, False, False, False, False
+            return True, {"display": "none"}, "", {"width": "0%"}, error_msg, feedback_style, no_update, no_update, no_update, no_update, no_update, no_update, False, False, False, False, False, False, False, False, False, False, False, False
             
         if progress.get('done'):
             new_updated_time = (current_updated or 0) + 1
+            has_mean = state.get('has_mean', False)
             has_sum = state['has_sum']
             gene_coexpression = state['gene_coexpression']
             coexp_style = {"display": "block" if gene_coexpression is not None else "none"}
             toggle_options = [
-                {'label': ' Mean', 'value': 'mean'},
+                {'label': ' Mean', 'value': 'mean', 'disabled': not has_mean},
                 {'label': ' Sum', 'value': 'sum', 'disabled': not has_sum}
             ]
+            dataset_value = 'mean'
+            if not has_mean and has_sum:
+                dataset_value = 'sum'
+                
             warning_msg = state.get('mapping_warning', "")
             if warning_msg:
                 feedback_style = {"display": "block", "backgroundColor": "#fef9e7", "color": "#7d6608", "border": "1px solid #f9e79f"}
@@ -2937,14 +2981,14 @@ print("\\n=== Drive mapped successfully! ===")
                 feedback_style = {"display": "block", "backgroundColor": "#d4efdf", "color": "#196f3d"}
                 feedback_msg = "Data sources successfully loaded and applied!"
             
-            return True, {"display": "none"}, "", {"width": "100%"}, feedback_msg, feedback_style, {"display": "none"}, {"display": "flex", "width": "100%", "marginBottom": "20px"}, coexp_style, toggle_options, new_updated_time, False, False, False, False, False, False, False, False, False, False, False, False
+            return True, {"display": "none"}, "", {"width": "100%"}, feedback_msg, feedback_style, {"display": "none"}, {"display": "flex", "width": "100%", "marginBottom": "20px"}, coexp_style, toggle_options, dataset_value, new_updated_time, False, False, False, False, False, False, False, False, False, False, False, False
             
         step = progress.get('step', 0)
         total = progress.get('total', 8)
         msg = progress.get('msg', 'Loading...')
         percentage = int((step / total) * 100) if total > 0 else 0
         
-        return False, {"display": "block"}, msg, {"width": f"{percentage}%", "height": "100%", "backgroundColor": "#2ecc71", "transition": "width 0.2s"}, no_update, no_update, no_update, no_update, no_update, no_update, no_update, True, True, True, True, True, True, True, True, True, True, True, True
+        return False, {"display": "block"}, msg, {"width": f"{percentage}%", "height": "100%", "backgroundColor": "#2ecc71", "transition": "width 0.2s"}, no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update, True, True, True, True, True, True, True, True, True, True, True, True
     
     @app.callback(
         [Output("gene-table", "columns"),
@@ -4289,6 +4333,7 @@ print("\\n=== Drive mapped successfully! ===")
         state['sample_cols'] = []
         state['global_col_mean'] = ""
         state['global_col_sum'] = ""
+        state['has_mean'] = False
         state['has_sum'] = False
         state['isoforms_by_gene'] = {}
         state['gene_names'] = {}

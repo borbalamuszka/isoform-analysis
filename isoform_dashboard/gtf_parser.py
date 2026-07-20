@@ -241,3 +241,24 @@ def build_compressed_mapping(isoforms_dict, exon_scale_bp_per_unit=50.0, intron_
         "map_coord": map_coord,
         "total_width": cum[-1]
     }
+
+
+def parse_parentless_transcripts(filename):
+    """Parse GTF file to find transcript IDs that have no gene_id."""
+    import re
+    seen_transcripts = set()
+    mapped_transcripts = set()
+    with open(filename, 'r') as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                parts = line.split('\t')
+                if len(parts) >= 9:
+                    attributes = parts[8]
+                    transcript_match = re.search(r'transcript_id "([^"]+)"', attributes)
+                    gene_match = re.search(r'gene_id "([^"]+)"', attributes)
+                    if transcript_match:
+                        tx_id = transcript_match.group(1)
+                        seen_transcripts.add(tx_id)
+                        if gene_match and gene_match.group(1):
+                            mapped_transcripts.add(tx_id)
+    return seen_transcripts - mapped_transcripts

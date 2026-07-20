@@ -21,6 +21,7 @@ from .data_processing import (
 from .gtf_parser import (
     parse_isoform_file,
     parse_gene_names,
+    parse_parentless_transcripts,
 )
 from .app_layout import create_app
 from .config import Colors, Dimensions, Styles
@@ -32,6 +33,7 @@ __all__ = [
     "prepare_table_data",
     "parse_isoform_file",
     "parse_gene_names",
+    "parse_parentless_transcripts",
     "create_app",
     "Colors",
     "Dimensions",
