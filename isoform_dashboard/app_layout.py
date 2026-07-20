@@ -128,7 +128,8 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                path_proteins=None,
                path_interpro_dir=None,
                path_coexpression_dir=None,
-               path_ci=None):
+               path_ci=None,
+               mapping_warning=""):
     """Create and configure the Dash application.
 
     Args:
@@ -277,79 +278,18 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
         
         # Loading progress state
         'loading_progress': {'step': 0, 'total': 7, 'msg': '', 'done': False, 'error': None, 'updated_time': 0},
-        'mapping_warning': "",
+        'mapping_warning': mapping_warning,
+        'parentless_transcripts': set(),
     }
 
+    if path_gtf and os.path.exists(path_gtf):
+        try:
+            from .gtf_parser import parse_parentless_transcripts
+            state['parentless_transcripts'] = parse_parentless_transcripts(path_gtf)
+        except Exception as e:
+            log.warning(f"Error parsing initial parentless transcripts: {e}")
+
     def recompute_derived_state():
-        # Check for inconsistencies between isoforms_by_gene (GTF) and gene_iso_mapping (coexpression)
-        state['mapping_warning'] = ""
-        if state.get('isoforms_by_gene') and state.get('gene_iso_mapping'):
-            mismatched_genes = []
-            for gene_id, gtf_txs in state['isoforms_by_gene'].items():
-                coexp_txs = state['gene_iso_mapping'].get(gene_id)
-                if coexp_txs is not None:
-                    gtf_set = set(gtf_txs.keys())
-                    coexp_set = set(coexp_txs)
-                    if gtf_set != coexp_set:
-                        mismatched_genes.append(gene_id)
-            if mismatched_genes:
-                warn_msg = f"Discrepancies detected between GTF and Co-expression mappings for {len(mismatched_genes)} genes (e.g. {', '.join(mismatched_genes[:3])}). Defaulting to GTF mappings."
-                state['mapping_warning'] = warn_msg
-                log.warning("recompute_derived_state: " + warn_msg)
-
-        # Check for isoforms that are present in expression/co-expression but missing parent gene mapping in GTF
-        missing_in_gtf = {}
-        df_expr = state.get('df_mean') if state.get('df_mean') is not None else state.get('df_sum')
-        if df_expr is not None and not df_expr.empty:
-            for idx, row in df_expr.iterrows():
-                tx_id = row.get('transcript_id')
-                g_id = row.get('gene_id')
-                if pd.notna(tx_id) and pd.notna(g_id):
-                    missing_in_gtf[tx_id] = g_id
-
-        if state.get('gene_iso_mapping'):
-            for g_id, tx_list in state['gene_iso_mapping'].items():
-                for tx_id in tx_list:
-                    missing_in_gtf[tx_id] = g_id
-
-        if state.get('isoforms_by_gene') is not None:
-            gtf_was_supplied = len(state['isoforms_by_gene']) > 0
-            gtf_mapped_transcripts = {tx for txs in state['isoforms_by_gene'].values() for tx in txs.keys()}
-            unmapped_isoforms = {tx: g for tx, g in missing_in_gtf.items() if tx not in gtf_mapped_transcripts}
-
-            if unmapped_isoforms:
-                for tx_id, g_id in unmapped_isoforms.items():
-                    if g_id not in state['isoforms_by_gene']:
-                        state['isoforms_by_gene'][g_id] = {}
-                    state['isoforms_by_gene'][g_id][tx_id] = []
-
-                if gtf_was_supplied:
-                    warn_msg = f"{len(unmapped_isoforms)} transcripts are missing parent gene mapping in GTF. Defaulted their mapping to expression/co-expression data (e.g. {', '.join(list(unmapped_isoforms.keys())[:3])})."
-                    if state.get('mapping_warning'):
-                        state['mapping_warning'] += " " + warn_msg
-                    else:
-                        state['mapping_warning'] = warn_msg
-                    log.warning("recompute_derived_state: " + warn_msg)
-
-        # Check for completely unresolved parentless transcripts if GTF is loaded
-        if state.get('path_gtf'):
-            try:
-                from .gtf_parser import parse_parentless_transcripts
-                parentless = parse_parentless_transcripts(state['path_gtf'])
-                if parentless:
-                    # Filter for those that are completely unresolved (not in isoforms_by_gene)
-                    all_mapped = {tx for txs in state['isoforms_by_gene'].values() for tx in txs.keys()}
-                    unresolved = parentless - all_mapped
-                    if unresolved:
-                        warn_msg = f"{len(unresolved)} parentless transcripts in GTF could not be resolved (e.g. {', '.join(list(unresolved)[:3])})."
-                        if state.get('mapping_warning'):
-                            state['mapping_warning'] += " " + warn_msg
-                        else:
-                            state['mapping_warning'] = warn_msg
-                        log.warning("recompute_derived_state: " + warn_msg)
-            except Exception as e:
-                log.warning(f"Error parsing parentless transcripts in derived state: {e}")
-
         state['genes_with_cds'] = set()
         if state['isoforms_by_gene']:
             state['genes_with_cds'] = {
@@ -2041,7 +1981,23 @@ def _register_callbacks(app, state):
                     elif ci_df.index.name != 'isoform':
                         ci_df.index.name = 'isoform'
                     ci_columns = [col for col in ci_df.columns if col.startswith('ci_')]
-            # Check for parentless transcripts and try to resolve them/abort loading
+            # Check for parentless transcripts and mapping inconsistencies at load time
+            mapping_warning = ""
+            parentless_transcripts = set()
+            warnings_list = []
+            
+            if isoforms_by_gene and gene_iso_mapping:
+                mismatched_genes = []
+                for gene_id, gtf_txs in isoforms_by_gene.items():
+                    coexp_txs = gene_iso_mapping.get(gene_id)
+                    if coexp_txs is not None:
+                        if set(gtf_txs.keys()) != set(coexp_txs):
+                            mismatched_genes.append(gene_id)
+                if mismatched_genes:
+                    warn = f"Discrepancies detected between GTF and Co-expression mappings for {len(mismatched_genes)} genes (e.g. {', '.join(mismatched_genes[:3])}). Defaulting to GTF mappings."
+                    warnings_list.append(warn)
+                    log.warning("bg_load_data: " + warn)
+
             if path_gtf and isoforms_by_gene:
                 from .gtf_parser import parse_parentless_transcripts
                 parentless_transcripts = parse_parentless_transcripts(path_gtf)
@@ -2054,22 +2010,30 @@ def _register_callbacks(app, state):
                             g_id = row.get('gene_id')
                             if tx_id in parentless_transcripts and pd.notna(tx_id) and pd.notna(g_id):
                                 resolved_mappings[tx_id] = g_id
-                    
+                                
                     if gene_iso_mapping:
                         for g_id, tx_list in gene_iso_mapping.items():
                             for tx_id in tx_list:
                                 if tx_id in parentless_transcripts:
                                     resolved_mappings[tx_id] = g_id
                                     
+                    if resolved_mappings:
+                        warn = f"{len(resolved_mappings)} transcripts are missing parent gene mapping in GTF. Defaulted their mapping to expression/co-expression data (e.g. {', '.join(list(resolved_mappings.keys())[:3])})."
+                        warnings_list.append(warn)
+                        log.warning("bg_load_data: " + warn)
+                        for tx_id, g_id in resolved_mappings.items():
+                            if g_id not in isoforms_by_gene:
+                                isoforms_by_gene[g_id] = {}
+                            isoforms_by_gene[g_id][tx_id] = []
+                            
                     unresolved = parentless_transcripts - set(resolved_mappings.keys())
                     if unresolved:
-                        log.warning(f"GTF contains {len(unresolved)} unresolved parentless transcripts (e.g. {', '.join(list(unresolved)[:3])}).")
+                        warn = f"{len(unresolved)} parentless transcripts in GTF could not be resolved (e.g. {', '.join(list(unresolved)[:3])})."
+                        warnings_list.append(warn)
+                        log.warning("bg_load_data: " + warn)
                         
-                    # Apply resolved mappings to isoforms_by_gene local variable
-                    for tx_id, g_id in resolved_mappings.items():
-                        if g_id not in isoforms_by_gene:
-                            isoforms_by_gene[g_id] = {}
-                        isoforms_by_gene[g_id][tx_id] = []
+            if warnings_list:
+                mapping_warning = " ".join(warnings_list)
                         
             # Apply loaded variables to state
             state['df_mean'] = df_mean
@@ -2093,6 +2057,8 @@ def _register_callbacks(app, state):
             state['gene_iso_mapping'] = gene_iso_mapping
             state['ci_df'] = ci_df
             state['ci_columns'] = ci_columns or []
+            state['mapping_warning'] = mapping_warning
+            state['parentless_transcripts'] = parentless_transcripts
             
             state['path_mean'] = path_mean
             state['path_sum'] = path_sum
@@ -4362,6 +4328,7 @@ print("\\n=== Drive mapped successfully! ===")
         state['isoform_coexpression_idx'] = None
         state['gene_iso_mapping'] = {}
         state['mapping_warning'] = ""
+        state['parentless_transcripts'] = set()
         
         # Derived tables
         state['table_df_mean'] = None

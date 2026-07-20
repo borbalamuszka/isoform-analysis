@@ -216,37 +216,8 @@ def main():
         if os.path.exists(args.exons):
             print(f"Loading exon structures from GTF file: {args.exons}")
             try:
-                from .gtf_parser import parse_parentless_transcripts
-                parentless_transcripts = parse_parentless_transcripts(args.exons)
-                
-                resolved_mappings = {}
-                df_expr = df_mean if df_mean is not None else df_sum
-                if df_expr is not None and not df_expr.empty:
-                    for idx, row in df_expr.iterrows():
-                        tx_id = row.get('transcript_id')
-                        g_id = row.get('gene_id')
-                        if tx_id in parentless_transcripts and pd.notna(tx_id) and pd.notna(g_id):
-                            resolved_mappings[tx_id] = g_id
-                
-                if gene_iso_mapping:
-                    for g_id, tx_list in gene_iso_mapping.items():
-                        for tx_id in tx_list:
-                            if tx_id in parentless_transcripts:
-                                resolved_mappings[tx_id] = g_id
-                
-                unresolved = parentless_transcripts - set(resolved_mappings.keys())
-                if unresolved:
-                    print(f"Warning: GTF contains {len(parentless_transcripts)} transcripts with no parent gene (e.g. {', '.join(list(parentless_transcripts)[:3])}) which could not be resolved.", file=sys.stderr)
-                
                 isoforms_by_gene = parse_isoform_file(args.exons)
                 print(f"Loaded exon data for {len(isoforms_by_gene)} genes")
-                
-                if parentless_transcripts:
-                    print(f"Applying fallback gene mappings for {len(parentless_transcripts)} parentless transcripts using expression/co-expression data.")
-                    for tx_id, g_id in resolved_mappings.items():
-                        if g_id not in isoforms_by_gene:
-                            isoforms_by_gene[g_id] = {}
-                        isoforms_by_gene[g_id][tx_id] = []
                 
                 # Also load gene names
                 print(f"Loading gene names from GTF file: {args.exons}")
@@ -332,6 +303,62 @@ def main():
         else:
             print(f"Warning: InterPro directory not found: {args.interpro_dir}", file=sys.stderr)
 
+    # Perform consistency and parentless transcripts checks once at startup
+    mapping_warning = ""
+    warnings_list = []
+    
+    if isoforms_by_gene and gene_iso_mapping:
+        mismatched_genes = []
+        for gene_id, gtf_txs in isoforms_by_gene.items():
+            coexp_txs = gene_iso_mapping.get(gene_id)
+            if coexp_txs is not None:
+                if set(gtf_txs.keys()) != set(coexp_txs):
+                    mismatched_genes.append(gene_id)
+        if mismatched_genes:
+            warn = f"Discrepancies detected between GTF and Co-expression mappings for {len(mismatched_genes)} genes (e.g. {', '.join(mismatched_genes[:3])}). Defaulting to GTF mappings."
+            warnings_list.append(warn)
+            print(f"Warning: {warn}", file=sys.stderr)
+
+    if args.exons and isoforms_by_gene:
+        try:
+            from .gtf_parser import parse_parentless_transcripts
+            parentless_transcripts = parse_parentless_transcripts(args.exons)
+            if parentless_transcripts:
+                resolved_mappings = {}
+                df_expr = df_mean if df_mean is not None else df_sum
+                if df_expr is not None and not df_expr.empty:
+                    for idx, row in df_expr.iterrows():
+                        tx_id = row.get('transcript_id')
+                        g_id = row.get('gene_id')
+                        if tx_id in parentless_transcripts and pd.notna(tx_id) and pd.notna(g_id):
+                            resolved_mappings[tx_id] = g_id
+                            
+                if gene_iso_mapping:
+                    for g_id, tx_list in gene_iso_mapping.items():
+                        for tx_id in tx_list:
+                            if tx_id in parentless_transcripts:
+                                resolved_mappings[tx_id] = g_id
+                                
+                if resolved_mappings:
+                    warn = f"{len(resolved_mappings)} transcripts are missing parent gene mapping in GTF. Defaulted their mapping to expression/co-expression data (e.g. {', '.join(list(resolved_mappings.keys())[:3])})."
+                    warnings_list.append(warn)
+                    print(f"Warning: {warn}", file=sys.stderr)
+                    for tx_id, g_id in resolved_mappings.items():
+                        if g_id not in isoforms_by_gene:
+                            isoforms_by_gene[g_id] = {}
+                        isoforms_by_gene[g_id][tx_id] = []
+                        
+                unresolved = parentless_transcripts - set(resolved_mappings.keys())
+                if unresolved:
+                    warn = f"{len(unresolved)} parentless transcripts in GTF could not be resolved (e.g. {', '.join(list(unresolved)[:3])})."
+                    warnings_list.append(warn)
+                    print(f"Warning: {warn}", file=sys.stderr)
+        except Exception as e:
+            print(f"Failed to check parentless transcripts: {e}", file=sys.stderr)
+            
+    if warnings_list:
+        mapping_warning = " ".join(warnings_list)
+
     app = create_app(df_mean, df_sum if has_sum else df_mean,
                     results_df_mean, results_df_sum,
                     sample_cols, ci_df, ci_columns,
@@ -352,7 +379,8 @@ def main():
                     path_proteins=args.proteins,
                     path_interpro_dir=args.interpro_dir,
                     path_coexpression_dir=args.gene_coexpression_dir,
-                    path_ci=args.ci_file)
+                    path_ci=args.ci_file,
+                    mapping_warning=mapping_warning)
     
     # Get port from environment variable (for Render) or args or default
     port = args.port if args.port is not None else int(os.environ.get('PORT', 8050))
