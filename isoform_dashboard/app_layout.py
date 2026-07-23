@@ -3066,6 +3066,8 @@ print("\\n=== Drive mapped successfully! ===")
 
         # Gene changed → clear transcript selection unconditionally
         if trigger_id == "selected-gene":
+            if current_transcript is None:
+                raise PreventUpdate
             return None
 
         # Handle network click
@@ -3126,7 +3128,7 @@ print("\\n=== Drive mapped successfully! ===")
         """Update selected gene from scatter plot click, table selection, or network node click."""
         # Determine which input triggered the callback
         if not callback_context.triggered:
-            return current_gene
+            raise PreventUpdate
         
         trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
         
@@ -3135,21 +3137,27 @@ print("\\n=== Drive mapped successfully! ===")
             if network_click.get("type") == "gene":
                 gene_id = network_click.get("id")
                 if gene_id:
+                    if gene_id == current_gene:
+                        raise PreventUpdate
                     return gene_id
-            else:
-                raise PreventUpdate
+            raise PreventUpdate
 
         # Handle table row selection
-        if trigger_id == "gene-table" and selected_rows and len(selected_rows) > 0:
-            row_idx = selected_rows[0]
-            if table_data and row_idx < len(table_data):
-                gene_id = table_data[row_idx]["Gene ID"]
-                return gene_id
+        if trigger_id == "gene-table":
+            if selected_rows and len(selected_rows) > 0:
+                row_idx = selected_rows[0]
+                if table_data and row_idx < len(table_data):
+                    gene_id = table_data[row_idx].get("Gene ID")
+                    if gene_id:
+                        if gene_id == current_gene:
+                            raise PreventUpdate
+                        return gene_id
+            raise PreventUpdate
         
         # Handle scatter plot click
         if trigger_id == "plot-entropy-scatter" and click_data:
             if "points" not in click_data or not click_data["points"]:
-                return current_gene
+                raise PreventUpdate
             
             point = click_data["points"][0]
             gene_id = None
@@ -3162,9 +3170,12 @@ print("\\n=== Drive mapped successfully! ===")
             if not gene_id:
                 gene_id = point.get("hovertext") or point.get("text")
             if gene_id:
+                if gene_id == current_gene:
+                    raise PreventUpdate
                 return gene_id
+            raise PreventUpdate
         
-        return current_gene
+        raise PreventUpdate
 
     # Cache the base scatter figure (no highlight) per dataset.
     # Rebuilding px.scatter over all genes is expensive; only the gold ring
@@ -3269,17 +3280,26 @@ print("\\n=== Drive mapped successfully! ===")
     @app.callback(
         Output("gene-table", "selected_rows"),
         Input("selected-gene", "data"),
-        State("gene-table", "derived_virtual_data")
+        [State("gene-table", "derived_virtual_data"),
+         State("gene-table", "selected_rows")]
     )
-    def update_table_selection(selected_gene, table_data):
+    def update_table_selection(selected_gene, table_data, current_selected):
         """Highlight the selected gene in the table."""
         if not selected_gene or not table_data:
+            if not current_selected:
+                raise PreventUpdate
             return []
         
+        target_rows = []
         for idx, row in enumerate(table_data):
-            if row["Gene ID"] == selected_gene:
-                return [idx]
-        return []
+            if row.get("Gene ID") == selected_gene:
+                target_rows = [idx]
+                break
+                
+        if current_selected == target_rows:
+            raise PreventUpdate
+            
+        return target_rows
 
     # Cache the exon structure figure per (gene_id, dataset).
     # The exon bars never change when only the selected transcript changes;
@@ -3428,17 +3448,20 @@ print("\\n=== Drive mapped successfully! ===")
     @app.callback(
         [Output("domain-details-text", "children"),
          Output("domain-details-link", "children"),
-        Output("domain-details-wrapper", "style"),
+         Output("domain-details-wrapper", "style"),
          Output("selected-domain", "data")],
         [Input("exon-visualization", "clickData"),
          Input("selected-gene", "data")],
+        [State("selected-domain", "data")],
     )
-    def update_domain_details(exon_click, selected_gene):
+    def update_domain_details(exon_click, selected_gene, current_domain):
         """Show copyable domain details when a domain rectangle is clicked."""
         hidden_style = {"display": "none"}
         if callback_context.triggered:
             trigger_id = callback_context.triggered[0]["prop_id"].split(".")[0]
             if trigger_id == "selected-gene":
+                if current_domain is None:
+                    raise PreventUpdate
                 return "", "", hidden_style, None
 
         if not exon_click or "points" not in exon_click or not exon_click["points"]:
@@ -3596,6 +3619,7 @@ print("\\n=== Drive mapped successfully! ===")
 
         # Determine if CIs should be shown based on toggle.
         # In sum mode, CIs are always disabled.
+        ci_toggle_value = ci_toggle_value or []
         if dataset == 'sum':
             show_ci = False
         else:
@@ -3655,7 +3679,7 @@ print("\\n=== Drive mapped successfully! ===")
             ci_toggle_value_out = []
         else:
             ci_toggle_style = {'display': 'inline-block'}
-            ci_toggle_value_out = ci_toggle_value
+            ci_toggle_value_out = no_update
 
         return fig_dist, label, ci_toggle_style, ci_toggle_value_out
 
