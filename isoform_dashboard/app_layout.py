@@ -335,6 +335,16 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
             fallback_records = []
             gene_ids_set = set()
             
+            degree_dict = {}
+            if state.get('gene_coexpression') is not None and state.get('gene_coexpression_idx') is not None:
+                try:
+                    mat_csr = state['gene_coexpression'].tocsr()
+                    for idx, g_id in enumerate(state['gene_coexpression_idx']):
+                        deg = int(mat_csr.indptr[idx+1] - mat_csr.indptr[idx])
+                        degree_dict[g_id] = deg
+                except Exception:
+                    degree_dict = {}
+
             # 1. Fallback from GTF (isoforms_by_gene)
             if state.get('isoforms_by_gene'):
                 for gene_id, transcripts in state['isoforms_by_gene'].items():
@@ -342,6 +352,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                     fallback_records.append({
                         "gene_id": gene_id,
                         "n_isoforms": len(transcripts),
+                        "degree_centrality": degree_dict.get(gene_id, 0),
                         "top_isoform_entropy": float('nan'),
                         "summed_isoform_entropy": float('nan'),
                         "mean_expression": 0.0,
@@ -355,6 +366,7 @@ def create_app(df_mean: pd.DataFrame, df_sum: pd.DataFrame, results_df_mean: pd.
                         fallback_records.append({
                             "gene_id": gene_id,
                             "n_isoforms": 1,
+                            "degree_centrality": degree_dict.get(gene_id, 0),
                             "top_isoform_entropy": float('nan'),
                             "summed_isoform_entropy": float('nan'),
                             "mean_expression": 0.0,

@@ -78,9 +78,10 @@ def compute_gene_ranking(results_df):
     """Rank genes based on min Spearman and entropy values.
     
     Ranking criteria:
-    1. Negative min Spearman genes come before positive ones
-    2. Within each group, rank by minimum of (top_isoform_entropy, summed_isoform_entropy)
-       Lower min entropy = higher rank (lower rank number)
+    1. Expression data available: Negative min Spearman genes come before positive ones,
+       then rank by min entropy (lower min entropy = higher rank).
+    2. GTF-only fallback: Rank by number of isoforms (n_isoforms) descending.
+    3. Co-expression-only fallback: Rank by degree centrality descending.
     
     Args:
         results_df: DataFrame with gene results
@@ -97,11 +98,20 @@ def compute_gene_ranking(results_df):
     # Separate into negative and positive Spearman groups
     df_work["is_negative_spearman"] = df_work["min_spearman"] < 0
     
-    # Sort: negative Spearman first (True=1, False=0, so descending puts True first)
-    # Then by min_entropy ascending (lower entropy = higher priority)
+    if "n_isoforms" not in df_work.columns:
+        df_work["n_isoforms"] = 1
+    if "degree_centrality" not in df_work.columns:
+        df_work["degree_centrality"] = 0
+    
+    # Sort criteria:
+    # 1. is_negative_spearman descending
+    # 2. min_entropy ascending (expression ranking)
+    # 3. n_isoforms descending (GTF-only fallback)
+    # 4. degree_centrality descending (Co-expression fallback)
     df_work_sorted = df_work.sort_values(
-        by=["is_negative_spearman", "min_entropy"],
-        ascending=[False, True]
+        by=["is_negative_spearman", "min_entropy", "n_isoforms", "degree_centrality"],
+        ascending=[False, True, False, False],
+        na_position='last'
     )
     
     # Assign ranks (1-indexed)
