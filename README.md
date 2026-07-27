@@ -11,32 +11,37 @@
 
 ## Data Flow & Architecture
 
+The dashboard features a **modular, multi-stream architecture**. Inputs can be loaded independently; missing optional streams degrade gracefully while preserving core functionality.
+
 ```
-[ Raw Expression Matrix ] + [ GTF Annotation ] + [ Sample Metadata ]
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │     Precomputation Suite / CLI       │
-        ├───────────────────────────────────────┤
-        │ 1. isoform_distribution.distributions │
-        │ 2. bootstrap_isoform_means           │
-        │ 3. compute_coexpression              │
-        │ 4. interpro_scan.py                  │
-        └───────────────────────────────────────┘
-                            │
-                            ▼
- ┌─────────────────────────────────────────────────────────────┐
- │                      Processed Outputs                      │
- ├───────────────────────────┬─────────────────────────────────┤
- │ distributions_mean.tsv    │ confidence_intervals.tsv        │
- │ distributions_sum.tsv     │ coexpression/*.npz & *.pkl      │
- └───────────────────────────┴─────────────────────────────────┘
-                            │
-                            ▼
-        ┌───────────────────────────────────────┐
-        │  Interactive Dash Web App (Port 8050)  │
-        └───────────────────────────────────────┘
+ ┌──────────────────────────────────────────────────────────────┐
+ │ STREAM 1: Pre-computed Distribution Tables (Fastest Start)   │ ──┐
+ │ • distributions_mean.tsv  (OR distributions_sum.tsv)         │   │
+ └──────────────────────────────────────────────────────────────┘   │
+                                OR                                  │
+ ┌──────────────────────────────────────────────────────────────┐   │
+ │ STREAM 2: Raw Expression Matrix + Metadata (Web UI or CLI)   │   │
+ │ • Raw Expression Matrix (.tsv / .csv)                        │   │
+ │ • Sample Metadata (.tsv / .csv)                              │   │
+ │   │                                                          │   │
+ │   └─► [ Precomputation Suite / CLI Tools ]                    │   │
+ │       ├─► distributions.py  ──────► Mean / Sum TSVs          │   │
+ │       ├─► bootstrap_means.py ─────► confidence_intervals.tsv│───┼───► ┌──────────────────────────────────┐
+ │       └─► compute_coexpression.py─► coexpression/*.npz & pkl │   │     │                                  │
+ └──────────────────────────────────────────────────────────────┘   │     │   Interactive Dash Web App       │
+                                OR                                  │     │         (Port 8050)          │
+ ┌──────────────────────────────────────────────────────────────┐   │     │                                  │
+ │ STREAM 3: Structural Annotations & Assets (Optional)         │   │     │ • Graceful Degradation:          │
+ │ • Exons GTF File ───────────────► 2D Exons & Gene Mappings   │───┼────►│   Launches with pre-computed     │
+ │ • Protein FASTA (Optional) ────► Amino Acid Sequence View    │   │     │   tables, raw matrices, or       │
+ │ • 3D Geometry Dir (Optional) ───► Interactive 3D Viewer      │   │     │   structural GTF annotations     │
+ │ • InterPro Dir (Optional) ──────► Functional Domain Overlay  │───┘     │   independently!                 │
+ └──────────────────────────────────────────────────────────────┘         └──────────────────────────────────┘
 ```
+
+### Input Optionality & Graceful Degradation
+- **Pre-computed vs. Raw Expression**: Supply pre-calculated `distributions_mean.tsv` / `distributions_sum.tsv` tables **OR** process raw count matrices using the built-in web precomputation tool.
+- **Structural Assets are Optional**: The dashboard functions fully as an expression viewer without GTF or 3D files. Supplying a GTF file unlocks 2D exon plots and transcript-to-gene mapping; adding FASTA, 3D Geometry, or InterPro directories unlocks residue-level sequence highlighting, 3D structural models, and domain overlays.
 
 ---
 
