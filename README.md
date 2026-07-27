@@ -16,28 +16,28 @@ The dashboard features a **modular, multi-stream architecture**. Input streams c
 ```
   ┌─────────────────────────────────────────────────────────┐
   │ 1. EXPRESSION DATA STREAM (Primary Data)                │
-  │    • Pre-computed TSVs (distributions_mean.tsv / sum.tsv) │ ──┐
+  │    • Pre-computed TSVs (distributions_mean.tsv / sum.tsv) ──┐
   │                    -- OR --                             │   │
   │    • Raw Expression Matrix + Sample Metadata            │   │
-  │      └──► Processed via Precomputation Suite (UI / CLI)  │   │
+  │      └──► Processed via Precomputation Suite (UI / CLI) │   │
   └─────────────────────────────────────────────────────────┘   │
                                                                 │
   ┌─────────────────────────────────────────────────────────┐   │
   │ 2. EXON STRUCTURE & GTF STREAM (Key Primary Input)      │   │
   │    • Exons GTF File (expressed_isoforms.gtf)            │   ├──► ┌──────────────────────────────────┐
-  │      └──► Enables 2D Exon Structure Viewer, CDS/UTR   │   │    │                                  │
-  │           Coordinates & Transcript-to-Gene Mappings    │   │    │  Interactive Dash Web Dashboard  │
+  │      └──► Enables 2D Exon Structure Viewer, CDS/UTR     │   │    │                                  │
+  │           Coordinates & Transcript-to-Gene Mappings     │   │    │  Interactive Dash Web Dashboard  │
   └─────────────────────────────────────────────────────────┘   │    │           (Port 8050)            │
                                                                 │    │                                  │
   ┌─────────────────────────────────────────────────────────┐   │    │ • Graceful Degradation:          │
   │ 3. CO-EXPRESSION NETWORK STREAM (Optional Network Data) │   │    │   Launches with GTF annotations, │
-  │    • Precomputed Sparse Matrices (coexpression/*.npz)    │───┼───►│   expression datasets, or        │
+  │    • Precomputed Sparse Matrices (coexpression/*.npz)   │───┼───►│   expression datasets, or        │
   └─────────────────────────────────────────────────────────┘   │    │   3D models independently!       │
                                                                 │    └──────────────────────────────────┘
   ┌─────────────────────────────────────────────────────────┐   │
   │ 4. PROTEIN & 3D ASSETS STREAM (Optional Enhancements)   │   │
   │    • Protein FASTA (amino acid sequence viewer)         │   │
-  │    • AlphaFold 3D Geometry Dir (3D molecular viewer)   │───┘
+  │    • AlphaFold 3D Geometry Dir (3D molecular viewer)    │───┘
   │    • InterPro Scan Results Dir (functional domains)     │
   └─────────────────────────────────────────────────────────┘
 ```
