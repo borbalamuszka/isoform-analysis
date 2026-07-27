@@ -97,3 +97,84 @@
 .btn-reset:active {
     transform: scale(0.95);
 }
+
+/* Tooltip system for info icons and labeled text/dropdown fields */
+.settings-row,
+.settings-label {
+    position: relative;
+    overflow: visible;
+}
+
+.tooltip-icon,
+span[data-tooltip],
+span[title] {
+    position: relative;
+    cursor: help !important;
+    display: inline-block;
+}
+
+.tooltip-icon::after,
+span[data-tooltip]::after,
+span[title]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    background-color: #1e293b;
+    color: #ffffff;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.4;
+    white-space: normal;
+    width: max-content;
+    max-width: 280px;
+    z-index: 999999;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out, visibility 0.15s;
+    text-align: left;
+}
+
+.tooltip-icon::before,
+span[data-tooltip]::before,
+span[title]::before {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease-in-out, visibility 0.15s;
+}
+
+/* Fallback for title attribute if data-tooltip is not set */
+span[title]:not([data-tooltip])::after {
+    content: attr(title);
+}
+
+.tooltip-icon:hover::after,
+span[data-tooltip]:hover::after,
+span[title]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) scale(1);
+}
+
+.tooltip-icon:hover::before,
+span[data-tooltip]:hover::before,
+span[title]:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+

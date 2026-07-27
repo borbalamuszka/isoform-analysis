@@ -33,7 +33,7 @@ class InterProScanAPI:
     
     BASE_URL = "https://www.ebi.ac.uk/Tools/services/rest/iprscan5"
     
-    def __init__(self, email="bm708@cam.ac.uk"):
+    def __init__(self, email="email@template.com"):
         """
         Initialize the InterPro Scan API client.
         
@@ -398,7 +398,7 @@ def save_results(results, output_file):
     print(f"\nResults saved to: {output_file}")
 
 
-def process_batch_sequences(fasta_file, api, email='bm708@cam.ac.uk', 
+def process_batch_sequences(fasta_file, api, email='email@template.com', 
                            output_dir='data/neuro_project/output/interpro_results',
                            check_interval=10, max_wait=3600, skip_existing=False):
     """
@@ -773,8 +773,8 @@ Examples:
     
     parser.add_argument(
         '--email',
-        default='bm708@cam.ac.uk',
-        help='Contact email for EBI services (default: bm708@cam.ac.uk)'
+        default='email@template.com',
+        help='Contact email for EBI services (default: email@template.com)'
     )
     
     parser.add_argument(
