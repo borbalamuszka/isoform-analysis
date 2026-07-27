@@ -11,35 +11,42 @@
 
 ## Data Flow & Architecture
 
-The dashboard features a **modular, multi-stream architecture**. Inputs can be provided independently; missing optional streams degrade gracefully while preserving core functionality.
+The dashboard features a **modular, multi-stream architecture**. Input streams can be provided independently; missing optional inputs degrade gracefully while preserving core functionality.
 
 ```
   ┌─────────────────────────────────────────────────────────┐
-  │ 1. EXPRESSION STREAM (Primary Data)                     │
-  │    • Pre-computed TSVs (distributions_mean.tsv / sum.tsv)│ ──┐
+  │ 1. EXPRESSION DATA STREAM (Primary Data)                │
+  │    • Pre-computed TSVs (distributions_mean.tsv / sum.tsv) │ ──┐
   │                    -- OR --                             │   │
   │    • Raw Expression Matrix + Sample Metadata            │   │
   │      └──► Processed via Precomputation Suite (UI / CLI)  │   │
   └─────────────────────────────────────────────────────────┘   │
                                                                 │
   ┌─────────────────────────────────────────────────────────┐   │
-  │ 2. CO-EXPRESSION STREAM (Optional Network Data)          │   ├──► ┌─────────────────────────────────┐
-  │    • Precomputed Sparse Matrices (coexpression/*.npz)    │   │    │                                 │
-  └─────────────────────────────────────────────────────────┘   │    │  Interactive Dash Web Dashboard │
-                                                                │    │           (Port 8050)           │
-  ┌─────────────────────────────────────────────────────────┐   │    │                                 │
-  │ 3. STRUCTURAL ASSETS STREAM (Optional Annotations)      │   │    │ • Graceful Degradation:         │
-  │    • Exons GTF Annotation (2D structures & gene mapping)│───┘    │   Launches with any standalone  │
-  │    • Protein FASTA (amino acid sequence viewer)         │        │   or combined input streams!    │
-  │    • AlphaFold Geometry Dir (3D structure viewer)       │        └─────────────────────────────────┘
-  │    • InterPro Results Dir (protein domain overlay)      │
+  │ 2. EXON STRUCTURE & GTF STREAM (Key Primary Input)      │   │
+  │    • Exons GTF File (expressed_isoforms.gtf)            │   ├──► ┌──────────────────────────────────┐
+  │      └──► Enables 2D Exon Structure Viewer, CDS/UTR   │   │    │                                  │
+  │           Coordinates & Transcript-to-Gene Mappings    │   │    │  Interactive Dash Web Dashboard  │
+  └─────────────────────────────────────────────────────────┘   │    │           (Port 8050)            │
+                                                                │    │                                  │
+  ┌─────────────────────────────────────────────────────────┐   │    │ • Graceful Degradation:          │
+  │ 3. CO-EXPRESSION NETWORK STREAM (Optional Network Data) │   │    │   Launches with GTF annotations, │
+  │    • Precomputed Sparse Matrices (coexpression/*.npz)    │───┼───►│   expression datasets, or        │
+  └─────────────────────────────────────────────────────────┘   │    │   3D models independently!       │
+                                                                │    └──────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────┐   │
+  │ 4. PROTEIN & 3D ASSETS STREAM (Optional Enhancements)   │   │
+  │    • Protein FASTA (amino acid sequence viewer)         │   │
+  │    • AlphaFold 3D Geometry Dir (3D molecular viewer)   │───┘
+  │    • InterPro Scan Results Dir (functional domains)     │
   └─────────────────────────────────────────────────────────┘
 ```
 
 ### Input Optionality & Graceful Degradation
+- **Exon Structure GTF (Key Primary Input)**: Loading an `expressed_isoforms.gtf` file enables 2D exon structures, CDS/UTR color-coding, transcript-to-gene resolution, and structural searches even if expression matrix datasets are not yet loaded.
 - **Pre-computed vs. Raw Expression**: Supply pre-calculated `distributions_mean.tsv` / `distributions_sum.tsv` tables **OR** process raw count matrices using the built-in web precomputation tool.
-- **Co-expression Networks**: Optional co-expression correlation matrices (`coexpression/*.npz` and `*.pkl`) can be supplied or calculated via `utilities/compute_coexpression.py`.
-- **Structural Assets are Optional**: The dashboard functions fully as an expression viewer without GTF or 3D files. Supplying a GTF file unlocks 2D exon plots and transcript-to-gene mapping; adding FASTA, 3D Geometry, or InterPro directories unlocks residue-level sequence highlighting, 3D structural models, and domain overlays.
+- **Co-expression Networks**: Optional correlation matrices (`coexpression/*.npz` and `*.pkl`) can be supplied or calculated via `utilities/compute_coexpression.py`.
+- **Protein & 3D Structural Enhancements**: Protein FASTA, AlphaFold 3D Geometry, and InterPro Scan results are optional enhancements that unlock amino acid sequence views, interactive 3D structures, and functional domain overlays.
 
 ---
 
