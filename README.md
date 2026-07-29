@@ -1,4 +1,4 @@
-# ExSquared: Interactive Dashboard
+# ExSquared: Interactive Isoform Dashboard
 
 - Analyze gene isoform **EX**pression and generate distribution tables/plots.
 - Compute per‑gene metrics (entropy, Spearman) and bootstrap isoform means with CIs.
