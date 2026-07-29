@@ -1,10 +1,10 @@
-# Isoform Analysis Tools & Interactive Dashboard
+# ExSquared: Interactive Dashboard
 
-- Analyze gene isoform expression and generate distribution tables/plots.
+- Analyze gene isoform **EX**pression and generate distribution tables/plots.
 - Compute per‑gene metrics (entropy, Spearman) and bootstrap isoform means with CIs.
 - Query protein domains via EBI InterPro Scan REST API.
 - Create 3D structure geometry visualisations from AlphaFold models.
-- Explore results in an interactive Dash dashboard with exon, domain, and 3D protein structure visualization.
+- Explore results in an interactive Dash dashboard with **EX**on, domain, and 3D protein structure visualization.
 - Works with generic biological datasets; grouping and labels depend on the metadata provided (e.g., `condition`, `cell_type`, `tissue`).
 
 ---
